@@ -1,0 +1,3804 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eren Whiteboard</title>
+<style>
+:root {
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --fs: 14px;
+  --fs-sm: 13px;
+  --fs-lg: 16px;
+  --fs-xl: 22px;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+[data-theme="light"] {
+  --bg: #f4f4f2;
+  --surface: #ffffff;
+  --surface2: #f0f0ee;
+  --border: #e2e2de;
+  --border2: #d0d0ca;
+  --text: #1a1a18;
+  --muted: #6b6b68;
+  --dim: #a0a09c;
+  --accent: #1a6f3c;
+  --accent-bg: #e8f5ed;
+  --accent-border: #b2d9c0;
+  --green: #1a6f3c;
+  --green-bg: #e8f5ed;
+  --amber: #7a5200;
+  --amber-bg: #fff4d6;
+  --blue: #1a4fa0;
+  --blue-bg: #e8eefa;
+  --shadow: 0 1px 3px rgba(0,0,0,0.07);
+  --shadow-card: 0 1px 4px rgba(0,0,0,0.06);
+  --done-bg: #f8f8f6;
+  --stat-bg: #ffffff;
+}
+
+[data-theme="dark"] {
+  --bg: #0e0f11;
+  --surface: #161719;
+  --surface2: #1e2022;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0f0ee;
+  --muted: #888a8f;
+  --dim: #55585f;
+  --accent: #4ade80;
+  --accent-bg: rgba(74,222,128,0.1);
+  --accent-border: rgba(74,222,128,0.25);
+  --green: #4ade80;
+  --green-bg: rgba(74,222,128,0.1);
+  --amber: #fbbf24;
+  --amber-bg: rgba(251,191,36,0.1);
+  --blue: #60a5fa;
+  --blue-bg: rgba(96,165,250,0.1);
+  --shadow: none;
+  --shadow-card: none;
+  --done-bg: rgba(255,255,255,0.02);
+  --stat-bg: #1e2022;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  font-size: var(--fs);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 20px 16px 40px;
+  line-height: 1.5;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* TOP BAR */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.topbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.logo { font-size: var(--fs-xl); font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+.logo span { color: var(--accent); }
+.date-badge {
+  font-size: var(--fs-sm); color: var(--muted); background: var(--surface);
+  border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; box-shadow: var(--shadow);
+}
+.sync-badge {
+  font-size: var(--fs-sm); padding: 4px 10px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 5px;
+}
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+.sync-dot.ok { background: #16a34a; }
+.sync-dot.err { background: #dc2626; }
+.sync-dot.loading { background: var(--amber); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.topbar-right { display: flex; gap: 6px; align-items: center; }
+.theme-btn {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 5px 10px; cursor: pointer; font-size: var(--fs-sm); color: var(--muted);
+  font-family: var(--font); box-shadow: var(--shadow);
+}
+.theme-btn:hover { color: var(--text); }
+
+/* PAGE TABS */
+.page-tabs {
+  display: flex; gap: 2px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.page-tab {
+  padding: 8px 18px; font-size: var(--fs); color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  font-family: var(--font); background: none; border-top: none; border-left: none; border-right: none;
+  font-weight: 500; transition: color 0.12s;
+}
+.page-tab:hover { color: var(--text); }
+.page-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+
+/* PAGE SECTIONS */
+.page-section { display: none; }
+.page-section.active { display: block; }
+
+/* STATS */
+.stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 14px; }
+@media(max-width:560px) { .stats { grid-template-columns: repeat(2,1fr); } }
+.stat {
+  background: var(--stat-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 10px; text-align: center; box-shadow: var(--shadow-card);
+}
+.stat-n { font-size: 26px; font-weight: 700; color: var(--accent); line-height: 1; }
+.stat-l { font-size: var(--fs-sm); color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* TOOLBAR */
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.filters { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip {
+  padding: 4px 12px; border-radius: 20px; font-size: var(--fs-sm);
+  border: 1px solid var(--border2); background: var(--surface); cursor: pointer;
+  color: var(--muted); font-family: var(--font); transition: all 0.12s; box-shadow: var(--shadow);
+}
+.chip:hover { color: var(--text); }
+.chip.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-border); }
+.toolbar-right { display: flex; gap: 6px; }
+.add-btn {
+  padding: 5px 12px; border-radius: var(--radius-sm); font-size: var(--fs-sm);
+  border: 1px dashed var(--border2); background: transparent; cursor: pointer;
+  color: var(--muted); font-family: var(--font); transition: all 0.12s;
+}
+.add-btn:hover { color: var(--text); border-color: var(--border2); background: var(--surface); }
+
+/* PROJECT GRID */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 10px; margin-bottom: 14px; }
+@media(max-width:420px) { .grid { grid-template-columns: 1fr; } }
+
+/* CARD */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-card); overflow: hidden; transition: border-color 0.15s; }
+.card-header { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px; cursor: pointer; user-select: none; }
+.card-header:hover { background: var(--surface2); }
+.card-title-wrap { flex: 1; min-width: 0; max-width: calc(100% - 52px); }
+.card-title { font-size: var(--fs-lg); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-meta { font-size: var(--fs-sm); color: var(--muted); margin-top: 1px; }
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 10px; font-weight: 600; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.04em; }
+.badge-waiting { background: var(--blue-bg); color: var(--blue); }
+.badge-active { background: var(--green-bg); color: var(--green); }
+.badge-building { background: var(--amber-bg); color: var(--amber); }
+.badge-cancelled { background: rgba(100,100,100,0.12); color: var(--muted); }
+.card-chevron { color: var(--dim); font-size: 14px; transition: transform 0.2s; flex-shrink: 0; display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; background: none; border: none; padding: 0; font-family: var(--font); }
+.card.expanded .card-chevron { transform: rotate(180deg); }
+.card-progress { padding: 0 12px 10px; border-bottom: 1px solid var(--border); }
+.progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+.progress-label { font-size: var(--fs-sm); color: var(--dim); margin-top: 4px; }
+.card-body { display: none; }
+.card.expanded .card-body { display: block; }
+
+/* INNER TABS */
+.tabs { display: flex; border-bottom: 1px solid var(--border); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  padding: 7px 12px; font-size: var(--fs-sm); color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; flex-shrink: 0;
+  font-family: var(--font); background: none; border-top: none; border-left: none; border-right: none;
+  transition: color 0.12s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.tab-count { display: inline-block; background: var(--surface2); border-radius: 8px; padding: 0 5px; font-size: 12px; margin-left: 4px; color: var(--muted); }
+
+/* TASKS */
+.task-list { padding: 6px 8px; }
+.task-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 4px; border-radius: var(--radius-sm); transition: background 0.1s; position: relative; }
+.task-item:hover { background: var(--surface2); }
+.task-item:hover .task-del { opacity: 1; }
+.task-cb { width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid var(--border2); flex-shrink: 0; cursor: pointer; margin-top: 2px; display: flex; align-items: center; justify-content: center; transition: all 0.12s; background: transparent; }
+.task-cb:hover { border-color: var(--accent); }
+.task-cb.done { background: var(--accent-bg); border-color: var(--accent-border); }
+.task-cb.done::after { content: "✓"; font-size: 9px; color: var(--accent); font-weight: 700; }
+.task-text-wrap { flex: 1; min-width: 0; }
+.task-text { font-size: var(--fs); color: var(--text); word-break: break-word; cursor: text; outline: none; border-radius: 3px; padding: 1px 3px; margin: -1px -3px; display: block; }
+.task-text:focus { background: var(--surface2); }
+.task-text[contenteditable="true"]:empty::before { content: "Görev adı..."; color: var(--dim); }
+.task-done-text { text-decoration: line-through; color: var(--dim); }
+.task-del { opacity: 0; background: none; border: none; cursor: pointer; color: var(--dim); font-size: 18px; line-height: 1; padding: 0 2px; flex-shrink: 0; transition: color 0.1s, opacity 0.1s; }
+.task-del:hover { color: #e53e3e; }
+
+/* TASK LONG-PRESS DRAG */
+.task-item { touch-action: pan-y; }
+.task-item.dragging { opacity: 0.4; background: var(--surface2); border-radius: var(--radius-sm); box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: scale(1.02); }
+.task-item.drag-over { border-top: 2px solid var(--accent); }
+
+/* TASK META ROW */
+.task-meta-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 3px; }
+.task-priority-badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; font-family: var(--font); transition: opacity 0.12s; }
+.task-priority-badge:hover { opacity: 0.75; }
+.task-priority-high { background: rgba(220,38,38,0.12); color: #dc2626; }
+.task-priority-medium { background: rgba(217,119,6,0.12); color: #d97706; }
+.task-priority-low { background: rgba(22,163,74,0.12); color: #16a34a; }
+.task-status-badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-family: var(--font); background: var(--surface2); color: var(--muted); transition: all 0.12s; }
+.task-status-badge.cancelled { background: rgba(100,100,100,0.12); color: var(--muted); text-decoration: line-through; }
+.task-deadline-badge { font-size: 10px; color: var(--dim); cursor: pointer; border: none; background: none; font-family: var(--font); padding: 0; }
+.task-deadline-badge.overdue { color: #dc2626; font-weight: 600; }
+.task-deadline-badge.soon { color: #d97706; font-weight: 600; }
+.task-inline-edit { position: absolute; z-index: 200; background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.14); min-width: 220px; }
+.task-inline-edit label { display: block; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; margin-top: 8px; }
+.task-inline-edit label:first-child { margin-top: 0; }
+.task-inline-edit select, .task-inline-edit input[type=date] { width: 100%; padding: 4px 7px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: var(--fs-sm); color: var(--text); background: var(--surface2); font-family: var(--font); outline: none; }
+.task-inline-edit .close-inline { margin-top: 8px; font-size: var(--fs-sm); color: var(--muted); cursor: pointer; border: none; background: none; font-family: var(--font); width: 100%; text-align: center; }
+
+/* PROJECT CARD DRAG */
+.card.card-dragging { opacity: 0.4; }
+.card.card-drag-over { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drag-handle { cursor: grab; color: var(--dim); font-size: 14px; padding: 2px 4px; opacity: 0; transition: opacity 0.1s; flex-shrink: 0; background: none; border: none; }
+.card-header:hover .drag-handle { opacity: 1; }
+
+/* ADD TASK */
+.add-task-row { padding: 6px 12px 10px; display: flex; gap: 6px; border-top: 1px solid var(--border); }
+.add-task-input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 8px; font-size: var(--fs); color: var(--text); background: var(--surface2); font-family: var(--font); outline: none; transition: border-color 0.12s; }
+.add-task-input:focus { border-color: var(--border2); }
+.add-task-input::placeholder { color: var(--dim); }
+.add-task-btn { padding: 5px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: var(--accent-bg); color: var(--accent); font-size: var(--fs-sm); cursor: pointer; font-family: var(--font); font-weight: 600; white-space: nowrap; transition: all 0.12s; }
+.add-task-btn:hover { opacity: 0.8; }
+
+/* NOTE */
+.note-area { padding: 8px 12px 12px; border-top: 1px solid var(--border); }
+.note-label { font-size: var(--fs-sm); color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 5px; }
+.note-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 9px; font-size: var(--fs); color: var(--text); font-family: var(--font); resize: vertical; min-height: 58px; outline: none; transition: border-color 0.12s; }
+.note-input:focus { border-color: var(--border2); }
+.note-input::placeholder { color: var(--dim); }
+
+/* CARD ACTIONS */
+.card-actions { padding: 8px 12px 12px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--border); }
+.btn-sm { padding: 4px 10px; border-radius: var(--radius-sm); font-size: var(--fs-sm); border: 1px solid var(--border2); background: transparent; cursor: pointer; color: var(--muted); font-family: var(--font); transition: all 0.12s; }
+.btn-sm:hover { color: var(--text); }
+.btn-danger { color: #c53030; }
+.btn-danger:hover { background: #fff5f5; border-color: #feb2b2; color: #c53030; }
+[data-theme="dark"] .btn-danger:hover { background: rgba(197,48,48,0.12); border-color: rgba(197,48,48,0.3); }
+
+/* FOCUS BOX */
+.focus-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow-card); }
+.focus-title { font-size: var(--fs-sm); font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+.focus-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: var(--fs); }
+.focus-item:last-child { border-bottom: none; }
+.focus-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.focus-ai-btn { padding: 4px 12px; border-radius: var(--radius-sm); font-size: var(--fs-sm); border: 1px solid var(--accent-border); background: var(--accent-bg); color: var(--accent); cursor: pointer; font-family: var(--font); font-weight: 600; transition: opacity 0.12s; white-space: nowrap; }
+.focus-ai-btn:hover { opacity: 0.8; }
+.focus-ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.focus-loading { color: var(--muted); font-size: var(--fs-sm); font-style: italic; padding: 8px 0; }
+
+/* ─── IDEAS SECTION ─── */
+.ideas-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.ideas-left { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.search-input { padding: 5px 10px; border: 1px solid var(--border2); border-radius: 20px; font-size: var(--fs-sm); background: var(--surface); color: var(--text); font-family: var(--font); outline: none; width: 180px; transition: border-color 0.12s; }
+.search-input:focus { border-color: var(--border2); }
+.search-input::placeholder { color: var(--dim); }
+
+.ideas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 10px; margin-bottom: 16px; }
+@media(max-width:420px) { .ideas-grid { grid-template-columns: 1fr; } }
+
+.idea-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-card); overflow: hidden; position: relative; }
+.idea-card-thumb-wrap { position: relative; line-height: 0; }
+.idea-card-thumb { width: 100%; height: 160px; object-fit: cover; display: block; }
+.idea-card-thumb-badge { position: absolute; bottom: 6px; right: 6px; background: rgba(0,0,0,0.72); color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+.idea-card-body { padding: 12px 14px 10px; }
+.idea-card-no-thumb { padding: 14px; }
+.idea-card:hover .idea-del { opacity: 1; }
+.idea-source { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.idea-source-icon { font-size: 14px; }
+.idea-source-url { font-size: var(--fs-sm); color: var(--blue); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; display: inline-block; }
+.idea-source-url:hover { text-decoration: underline; }
+.idea-title { font-size: var(--fs-lg); font-weight: 600; margin-bottom: 6px; color: var(--text); outline: none; cursor: text; }
+.idea-title:focus { background: var(--surface2); border-radius: 4px; }
+.idea-title[contenteditable]:empty::before { content: "Başlık..."; color: var(--dim); }
+.idea-summary { font-size: var(--fs-sm); color: var(--muted); line-height: 1.6; outline: none; cursor: text; }
+.idea-summary:focus { background: var(--surface2); border-radius: 4px; }
+.idea-summary[contenteditable]:empty::before { content: "Özet veya not..."; color: var(--dim); }
+.idea-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
+.idea-tag { font-size: var(--fs-sm); padding: 2px 9px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all 0.1s; }
+.idea-tag:hover { border-color: var(--accent-border); color: var(--accent); }
+.idea-tag.selected { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+.idea-tag-active { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+.idea-del { position: absolute; top: 10px; right: 10px; opacity: 0; background: none; border: none; cursor: pointer; color: var(--dim); font-size: 18px; transition: color 0.1s, opacity 0.1s; }
+.idea-del:hover { color: #e53e3e; }
+.idea-date { font-size: 11px; color: var(--dim); margin-top: 8px; }
+.idea-ai-badge { font-size: 11px; color: var(--accent); background: var(--accent-bg); border: 1px solid var(--accent-border); border-radius: 8px; padding: 1px 7px; display: inline-block; margin-top: 6px; }
+
+/* ADD IDEA BOX */
+.add-idea-box { background: var(--surface); border: 2px dashed var(--border2); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.add-idea-title { font-size: var(--fs-sm); font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+.add-idea-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.add-idea-input { flex: 1; min-width: 180px; padding: 7px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: var(--fs); color: var(--text); background: var(--surface2); font-family: var(--font); outline: none; transition: border-color 0.12s; }
+.add-idea-input:focus { border-color: var(--border2); }
+.add-idea-input::placeholder { color: var(--dim); }
+.add-idea-textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: var(--fs); color: var(--text); background: var(--surface2); font-family: var(--font); outline: none; resize: vertical; min-height: 56px; transition: border-color 0.12s; margin-bottom: 8px; }
+.add-idea-textarea:focus { border-color: var(--border2); }
+.add-idea-textarea::placeholder { color: var(--dim); }
+.add-idea-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.source-type-sel { padding: 5px 8px; border-radius: var(--radius-sm); font-size: var(--fs-sm); border: 1px solid var(--border2); background: var(--surface); color: var(--muted); font-family: var(--font); cursor: pointer; outline: none; }
+.gemini-btn { padding: 6px 14px; border-radius: var(--radius-sm); font-size: var(--fs-sm); border: 1px solid var(--accent-border); background: var(--accent-bg); color: var(--accent); cursor: pointer; font-family: var(--font); font-weight: 600; transition: opacity 0.12s; display: flex; align-items: center; gap: 5px; }
+.gemini-btn:hover { opacity: 0.8; }
+.gemini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.add-idea-save { padding: 6px 14px; border-radius: var(--radius-sm); font-size: var(--fs-sm); border: 1px solid var(--border2); background: var(--surface); color: var(--text); cursor: pointer; font-family: var(--font); font-weight: 600; transition: all 0.12s; }
+.add-idea-save:hover:not(:disabled) { background: var(--surface2); }
+.add-idea-save:disabled { opacity: 0.38; cursor: not-allowed; border-color: var(--border); color: var(--dim); }
+
+/* TAG MANAGER */
+.tag-manager { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; box-shadow: var(--shadow-card); }
+.tag-manager-title { font-size: var(--fs-sm); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; margin-bottom: 8px; }
+.tag-manager-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tag-pill { font-size: var(--fs-sm); padding: 3px 10px; border-radius: 20px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.1s; }
+.tag-pill:hover { border-color: var(--border2); }
+.tag-pill.filter-active { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+.tag-pill-del { font-size: 14px; line-height: 1; color: var(--dim); margin-left: 2px; }
+.tag-pill-del:hover { color: #e53e3e; }
+.add-tag-input { padding: 4px 8px; border: 1px dashed var(--border2); border-radius: 20px; font-size: var(--fs-sm); color: var(--text); background: transparent; font-family: var(--font); outline: none; width: 100px; }
+.add-tag-input::placeholder { color: var(--dim); }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+.modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+.modal h3 { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 14px; }
+.modal-field { margin-bottom: 10px; }
+.modal-label { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 4px; display: block; }
+.modal-input, .modal-select { width: 100%; padding: 7px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: var(--fs); color: var(--text); background: var(--surface2); font-family: var(--font); outline: none; }
+.modal-input:focus, .modal-select:focus { border-color: var(--accent-border); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.btn-primary { padding: 6px 14px; border-radius: var(--radius-sm); font-size: var(--fs); border: 1px solid var(--accent-border); background: var(--accent-bg); color: var(--accent); cursor: pointer; font-family: var(--font); font-weight: 600; transition: opacity 0.12s; }
+.btn-primary:hover { opacity: 0.8; }
+
+/* LOGIN OVERLAY */
+.login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+.login-modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); padding: 28px 24px; width: 100%; max-width: 360px; box-shadow: 0 12px 48px rgba(0,0,0,0.2); }
+.login-modal h2 { font-size: var(--fs-xl); font-weight: 700; margin-bottom: 4px; }
+.login-modal p { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 18px; }
+.login-field { margin-bottom: 12px; }
+.login-label { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 4px; display: block; }
+.login-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: var(--fs); color: var(--text); background: var(--surface2); font-family: var(--font); outline: none; }
+.login-input:focus { border-color: var(--accent-border); }
+.login-error { font-size: var(--fs-sm); color: #dc2626; margin-top: 10px; display: none; }
+.login-error.show { display: block; }
+.login-btn { width: 100%; padding: 9px 14px; border-radius: var(--radius-sm); font-size: var(--fs); border: none; background: var(--accent); color: #fff; cursor: pointer; font-family: var(--font); font-weight: 600; transition: opacity 0.12s; margin-top: 4px; }
+.login-btn:hover { opacity: 0.85; }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.logout-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 10px; cursor: pointer; font-size: var(--fs-sm); color: var(--muted); font-family: var(--font); box-shadow: var(--shadow); }
+.logout-btn:hover { color: #dc2626; border-color: #dc2626; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 18px; right: 18px; background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); padding: 9px 16px; font-size: var(--fs); color: var(--accent); opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 999; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+.toast.show { opacity: 1; }
+
+.hidden { display: none !important; }
+.empty-state { text-align: center; padding: 32px; color: var(--dim); font-size: var(--fs-sm); }
+
+/* ─── BLOG FİKİRLERİ ─── */
+.blog-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media(max-width:700px) { .blog-layout { grid-template-columns: 1fr; } }
+
+.blog-new-box {
+  background: var(--surface); border: 2px dashed var(--border2);
+  border-radius: var(--radius); padding: 16px;
+}
+.blog-new-title {
+  font-size: var(--fs-sm); font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px;
+}
+.blog-input {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); font-size: var(--fs); color: var(--text);
+  background: var(--surface2); font-family: var(--font); outline: none;
+  transition: border-color 0.12s; margin-bottom: 8px;
+}
+.blog-input:focus { border-color: var(--accent-border); }
+.blog-input::placeholder { color: var(--dim); }
+.blog-textarea {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: var(--fs); color: var(--text);
+  background: var(--surface2); font-family: var(--font); outline: none;
+  resize: vertical; min-height: 90px; transition: border-color 0.12s; margin-bottom: 8px;
+}
+.blog-textarea:focus { border-color: var(--accent-border); }
+.blog-textarea::placeholder { color: var(--dim); }
+
+.pillar-picker { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.pillar-btn {
+  padding: 3px 10px; border-radius: 20px; font-size: var(--fs-sm);
+  border: 1.5px solid transparent; cursor: pointer; font-family: var(--font);
+  transition: all 0.12s; background: var(--surface2); color: var(--muted);
+}
+.pillar-btn:hover { color: var(--text); }
+.pillar-btn.active { color: var(--text); font-weight: 600; }
+
+.blog-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.blog-save-btn {
+  padding: 6px 14px; border-radius: var(--radius-sm); font-size: var(--fs-sm);
+  border: 1px solid var(--border2); background: var(--surface); color: var(--text);
+  cursor: pointer; font-family: var(--font); font-weight: 600; transition: all 0.12s;
+}
+.blog-save-btn:hover { background: var(--surface2); }
+.blog-ai-btn {
+  padding: 6px 14px; border-radius: var(--radius-sm); font-size: var(--fs-sm);
+  border: 1px solid var(--accent-border); background: var(--accent-bg); color: var(--accent);
+  cursor: pointer; font-family: var(--font); font-weight: 600; transition: opacity 0.12s;
+  display: flex; align-items: center; gap: 5px;
+}
+.blog-ai-btn:hover { opacity: 0.8; }
+.blog-ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.blog-list { display: flex; flex-direction: column; gap: 8px; }
+
+.blog-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-card);
+  overflow: hidden; transition: border-color 0.15s;
+}
+.blog-card:hover .blog-card-del { opacity: 1; }
+.blog-card-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 12px; cursor: pointer; user-select: none;
+}
+.blog-card-header:hover { background: var(--surface2); }
+.blog-pillar-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.blog-card-title-text {
+  flex: 1; font-size: var(--fs); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.blog-pillar-badge {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  font-weight: 600; flex-shrink: 0;
+}
+.blog-card-chevron {
+  color: var(--dim); font-size: 10px; transition: transform 0.2s; flex-shrink: 0;
+}
+.blog-card.expanded .blog-card-chevron { transform: rotate(180deg); }
+.blog-card-del {
+  opacity: 0; background: none; border: none; cursor: pointer;
+  color: var(--dim); font-size: 18px; transition: color 0.1s, opacity 0.1s;
+  flex-shrink: 0; padding: 0 2px;
+}
+.blog-card-del:hover { color: #e53e3e; }
+
+.blog-card-body { display: none; border-top: 1px solid var(--border); }
+.blog-card.expanded .blog-card-body { display: block; }
+.blog-card-draft {
+  padding: 8px 12px 6px;
+  font-size: var(--fs-sm); color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 4px;
+}
+.blog-card-textarea {
+  width: 100%; padding: 6px 12px 12px; border: none;
+  font-size: var(--fs); color: var(--text); background: transparent;
+  font-family: var(--font); outline: none; resize: vertical; min-height: 80px;
+  line-height: 1.6;
+}
+.blog-card-textarea::placeholder { color: var(--dim); }
+.blog-card-tags { padding: 0 12px 10px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.blog-card-tag {
+  font-size: var(--fs-sm); padding: 2px 9px; border-radius: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer; transition: all 0.1s;
+}
+.blog-card-tag:hover { border-color: var(--accent-border); color: var(--accent); }
+.blog-card-tag.on { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+.blog-card-footer {
+  padding: 8px 12px; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.blog-ai-result {
+  background: var(--accent-bg); border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm); padding: 10px 12px; margin: 0 12px 10px;
+  font-size: var(--fs-sm); color: var(--text); line-height: 1.6; white-space: pre-wrap;
+}
+.blog-ai-result-label {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px;
+}
+.blog-card-date { font-size: 11px; color: var(--dim); }
+
+/* ─── PILLAR MANAGER ─── */
+.pillar-manager {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+  margin-bottom: 14px; box-shadow: var(--shadow-card);
+}
+.pillar-manager-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 2px; cursor: pointer; user-select: none;
+}
+.pillar-manager-title {
+  font-size: var(--fs-sm); font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.07em;
+}
+.pillar-manager-toggle { font-size: 10px; color: var(--dim); transition: transform 0.2s; }
+.pillar-manager.open .pillar-manager-toggle { transform: rotate(180deg); }
+.pillar-manager-body { display: none; padding-top: 10px; }
+.pillar-manager.open .pillar-manager-body { display: block; }
+.pillar-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; border-bottom: 1px solid var(--border);
+}
+.pillar-row:last-of-type { border-bottom: none; }
+.pillar-color-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; cursor: pointer;
+  transition: transform 0.12s;
+}
+.pillar-color-dot:hover { transform: scale(1.3); }
+.pillar-id-input {
+  width: 38px; padding: 3px 5px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 700;
+  color: var(--text); background: var(--surface2); font-family: var(--font);
+  outline: none; text-align: center;
+}
+.pillar-id-input:focus { border-color: var(--border2); }
+.pillar-label-input {
+  flex: 1; padding: 3px 7px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: var(--fs-sm);
+  color: var(--text); background: var(--surface2); font-family: var(--font); outline: none;
+}
+.pillar-label-input:focus { border-color: var(--border2); }
+.pillar-del-btn {
+  background: none; border: none; cursor: pointer; color: var(--dim);
+  font-size: 16px; line-height: 1; padding: 0 2px; transition: color 0.1s; flex-shrink: 0;
+}
+.pillar-del-btn:hover { color: #e53e3e; }
+.add-pillar-row {
+  display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap;
+}
+.add-pillar-input {
+  flex: 1; min-width: 120px; padding: 5px 8px; border: 1px dashed var(--border2);
+  border-radius: var(--radius-sm); font-size: var(--fs-sm); color: var(--text);
+  background: transparent; font-family: var(--font); outline: none;
+}
+.add-pillar-input::placeholder { color: var(--dim); }
+.add-pillar-btn {
+  padding: 5px 12px; border-radius: var(--radius-sm); font-size: var(--fs-sm);
+  border: 1px solid var(--border2); background: var(--surface); color: var(--muted);
+  cursor: pointer; font-family: var(--font); transition: all 0.12s;
+}
+.add-pillar-btn:hover { color: var(--text); background: var(--surface2); }
+.color-popover {
+  position: absolute; z-index: 50; background: var(--surface);
+  border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  display: flex; flex-wrap: wrap; gap: 5px; width: 148px;
+}
+.color-swatch {
+  width: 20px; height: 20px; border-radius: 4px; cursor: pointer;
+  border: 2px solid transparent; transition: transform 0.1s, border-color 0.1s;
+}
+.color-swatch:hover { transform: scale(1.2); border-color: var(--text); }
+/* ─── ARCHIVE PANEL ─── */
+.archive-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 12px; box-shadow: var(--shadow-card); overflow: hidden;
+}
+.archive-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm); font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.archive-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+}
+.archive-row:last-child { border-bottom: none; }
+.archive-row-color { width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+.archive-row-info { flex: 1; min-width: 0; }
+.archive-row-title { font-size: var(--fs); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.archive-row-meta { font-size: var(--fs-sm); color: var(--muted); margin-top: 2px; }
+
+/* ─── BLOG ARCHIVED CARD ─── */
+.blog-card.archived { opacity: 0.75; }
+.blog-card.archived .blog-card-header { background: var(--surface2); }
+
+/* TASK NUM */
+.task-num { font-size: 11px; color: var(--dim); min-width: 18px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; line-height: 1; }
+.task-edit-btn { opacity: 0; font-size: 11px; padding: 2px 5px; flex-shrink: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; color: var(--muted); font-family: var(--font); transition: opacity 0.1s; line-height: 1; }
+.task-item:hover .task-edit-btn { opacity: 1; }
+
+/* CARD TITLE EDITING */
+.card-title[contenteditable="true"] { cursor: text; outline: none; border-radius: 3px; padding: 1px 3px; margin: -1px -3px; }
+.card-title[contenteditable="true"]:focus { background: var(--surface2); }
+
+/* ─── CONTENT PAGE ─── */
+.content-layout { max-width: 700px; margin: 0 auto; }
+.content-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-card); }
+.content-box-title { font-size: var(--fs-lg); font-weight: 700; margin-bottom: 16px; }
+.content-field { margin-bottom: 14px; }
+.content-select { width: 100%; padding: 7px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: var(--fs); color: var(--text); background: var(--surface2); font-family: var(--font); outline: none; }
+.content-file-input { width: 100%; padding: 7px 0; font-size: var(--fs-sm); color: var(--muted); font-family: var(--font); }
+.content-textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: var(--fs); color: var(--text); background: var(--surface2); font-family: var(--font); outline: none; resize: vertical; min-height: 140px; }
+.content-textarea:focus { border-color: var(--border2); }
+.content-textarea::placeholder { color: var(--dim); }
+.content-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.content-draft-box { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px; }
+.content-draft-label { font-size: var(--fs-sm); font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.content-draft-text { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-size: var(--fs); line-height: 1.7; white-space: pre-wrap; }
+.content-draft-text h1, .content-draft-text h2, .content-draft-text h3 { margin-top: 1em; margin-bottom: 0.4em; }
+.content-draft-text p { margin-bottom: 0.6em; }
+.content-draft-text strong { font-weight: 700; }
+.content-draft-text em { font-style: italic; }
+
+.content-mode-row { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.content-mode-radio { display: flex; align-items: center; gap: 3px; cursor: pointer; padding: 6px 12px; border: 1px solid var(--border2); border-radius: 20px; font-size: var(--fs-sm); color: var(--muted); background: var(--surface); transition: all 0.12s; user-select: none; }
+.content-mode-radio:has(input:checked) { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); font-weight: 600; }
+.content-mode-radio input { display: none; }
+.content-mode-panel { margin-bottom: 14px; }
+.recorder-bar { display: flex; align-items: center; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.content-extra-input { width: 100%; padding: 7px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: var(--fs); color: var(--text); background: var(--surface2); font-family: var(--font); outline: none; resize: vertical; min-height: 48px; }
+.content-extra-input:focus { border-color: var(--accent-border); }
+.content-extra-input::placeholder { color: var(--dim); }
+
+/* CARD BG */
+.card { position: relative; }
+.card.has-bg { background: var(--card-bg); }
+[data-theme="dark"] .card.has-bg { background: var(--card-bg); }
+
+/* KEbab */
+.kebab-wrap { position: absolute; top: 4px; right: 4px; z-index: 20; }
+.kebab-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); border: none; background: transparent; color: var(--dim); cursor: pointer; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; font-family: var(--font); transition: background 0.1s; }
+.kebab-btn:hover { background: var(--surface2); color: var(--text); }
+.kebab-dropdown { position: absolute; top: 100%; right: 0; min-width: 180px; background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-sm); box-shadow: 0 4px 16px rgba(0,0,0,0.14); padding: 4px; z-index: 30; display: none; }
+.kebab-dropdown.open { display: block; }
+.kebab-dropdown button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: none; background: none; cursor: pointer; font-size: var(--fs-sm); color: var(--text); border-radius: 4px; font-family: var(--font); transition: background 0.1s; }
+.kebab-dropdown button:hover { background: var(--surface2); }
+.kebab-dropdown .color-swatches { display: grid; grid-template-columns: repeat(5,1fr); gap: 4px; padding: 6px 4px; border-top: 1px solid var(--border); margin-top: 4px; }
+.kebab-dropdown .color-swatch-item { width: 28px; height: 28px; border-radius: 6px; border: 2px solid transparent; cursor: pointer; transition: border-color 0.1s, transform 0.1s; }
+.kebab-dropdown .color-swatch-item:hover { border-color: var(--text); transform: scale(1.15); }
+.kebab-dropdown .color-swatch-item.active { border-color: var(--accent); }
+
+/* CONFIRM MODAL */
+.confirm-body { text-align: left; }
+.confirm-body p { font-size: var(--fs); color: var(--text); margin-bottom: 16px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<!-- NOT: Bu giriş arayüzü ve verileri korur ama sayfadaki GEMINI_KEY/SUPABASE_KEY kaynak kodda görünür kalır. Gerçek koruma için Gemini anahtarına Google Cloud Console'dan HTTP-referrer kısıtı ve Supabase'de RLS gerekir. -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-modal">
+    <h2>Eren Whiteboard</h2>
+    <p>Devam etmek için giriş yap</p>
+    <div class="login-field">
+      <label class="login-label">E-posta</label>
+      <input class="login-input" id="login-email" type="email" placeholder="ornek@email.com" autocomplete="email" />
+    </div>
+    <div class="login-field">
+      <label class="login-label">Şifre</label>
+      <input class="login-input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()" />
+    </div>
+    <button class="login-btn" id="login-btn" onclick="login()">Giriş</button>
+    <div class="login-error" id="login-error">E-posta veya şifre hatalı.</div>
+  </div>
+</div>
+
+<div id="app-root" class="hidden">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Eren <span>Whiteboard</span></div>
+    <div class="date-badge" id="date-badge"></div>
+    <div class="sync-badge" id="sync-badge">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">Bağlanıyor...</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">🌙 Koyu</button>
+    <button class="logout-btn" onclick="logout()">🚪 Çıkış</button>
+  </div>
+</div>
+
+<!-- PAGE TABS -->
+<div class="page-tabs">
+  <button class="page-tab active" onclick="switchPage('projects',this)">Projeler</button>
+  <button class="page-tab" onclick="switchPage('ideas',this)">Fikirler</button>
+  <button class="page-tab" onclick="switchPage('blog',this)">Blog Fikirleri</button>
+  <button class="page-tab" onclick="switchPage('content',this)">İçerik</button>
+</div>
+
+<!-- ═══════════════ PROJECTS PAGE ═══════════════ -->
+<div class="page-section active" id="page-projects">
+
+
+
+  <div class="toolbar">
+    <div class="toolbar-right">
+      <button class="add-btn" id="archive-btn" onclick="toggleProjectArchive()">📦 Arşiv</button>
+      <button class="add-btn" onclick="openAddProject()">+ Proje ekle</button>
+    </div>
+  </div>
+
+  <!-- PROJECT ARCHIVE PANEL -->
+  <div class="hidden archive-panel" id="project-archive-panel">
+    <div class="archive-panel-header">
+      <span>📦 Arşivlenmiş Projeler</span>
+      <button class="btn-sm" onclick="toggleProjectArchive()">Kapat</button>
+    </div>
+    <div id="project-archive-list"></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <!-- FOCUS BOX -->
+  <div class="focus-box">
+    <div class="focus-title">
+      <span>Odak Önerileri</span>
+      <button class="focus-ai-btn" id="focus-btn" onclick="getAIFocus()">✦ Gemini'ye sor</button>
+    </div>
+    <div id="focus-list"></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ IDEAS PAGE ═══════════════ -->
+<div class="page-section" id="page-ideas">
+
+  <!-- TAG MANAGER -->
+  <div class="tag-manager">
+    <div class="tag-manager-title">Etiketler</div>
+    <div class="tag-manager-row" id="tag-manager-row"></div>
+  </div>
+
+  <!-- ADD IDEA -->
+  <div class="add-idea-box">
+    <div class="add-idea-title">Yeni Fikir / Bookmark</div>
+    <div class="add-idea-row">
+      <input class="add-idea-input" id="new-idea-url" placeholder="URL yapıştır (opsiyonel)" oninput="onUrlInput(this.value)" />
+      <select class="source-type-sel" id="new-idea-source">
+        <option value="link">🔗 Link</option>
+        <option value="twitter">🐦 Twitter</option>
+        <option value="note">📝 Not</option>
+        <option value="keep">📌 Keep</option>
+      </select>
+      <button class="gemini-btn" id="fetch-btn" onclick="fetchUrlPreview()" style="white-space:nowrap">↓ Fetch</button>
+    </div>
+    <div id="url-preview" class="hidden" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;overflow:hidden;">
+      <img id="preview-img" src="" alt="" loading="lazy"
+        style="width:100%;height:140px;object-fit:cover;display:none;"
+        onerror="this.style.display='none'" />
+      <div style="padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <img id="preview-favicon" src="" style="width:13px;height:13px;border-radius:2px;flex-shrink:0;display:none;" onerror="this.style.display='none'" />
+          <span id="preview-site" style="font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;"></span>
+        </div>
+        <div id="preview-title" style="font-size:var(--fs-sm);font-weight:600;margin-bottom:3px;line-height:1.4;"></div>
+        <div id="preview-desc" style="font-size:var(--fs-sm);color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;"></div>
+      </div>
+    </div>
+    <div id="fetch-status" class="hidden" style="font-size:var(--fs-sm);color:var(--muted);font-style:italic;margin-bottom:8px;padding:6px 0"></div>
+    <textarea class="add-idea-textarea" id="new-idea-content" placeholder="İçerik, alıntı veya not yaz..."></textarea>
+    <div class="add-idea-actions">
+      <button class="gemini-btn" id="gemini-summarize-btn" onclick="geminiSummarize()">✦ Özetle</button>
+      <button class="add-idea-save" id="idea-save-btn" onclick="saveNewIdea()" disabled>Kaydet</button>
+      <span id="gemini-loading" class="hidden" style="font-size:var(--fs-sm);color:var(--muted);font-style:italic;">Gemini düşünüyor...</span>
+    </div>
+    <!-- Tag picker for new idea -->
+    <div style="margin-top:10px;display:flex;gap:5px;flex-wrap:wrap;" id="new-idea-tags-row"></div>
+  </div>
+
+  <!-- IDEAS TOOLBAR -->
+  <div class="ideas-toolbar">
+    <div class="ideas-left">
+      <input class="search-input" id="idea-search" placeholder="Ara..." oninput="renderIdeas()" />
+      <span id="ideas-filter-label" style="font-size:var(--fs-sm);color:var(--muted)"></span>
+    </div>
+    <div style="font-size:var(--fs-sm);color:var(--dim)" id="ideas-count"></div>
+  </div>
+
+  <div class="ideas-grid" id="ideas-grid"></div>
+
+</div>
+
+
+<!-- ═══════════════ BLOG FİKİRLERİ PAGE ═══════════════ -->
+<div class="page-section" id="page-blog">
+
+  <!-- PILLAR MANAGER -->
+  <div class="pillar-manager" id="pillar-manager">
+    <div class="pillar-manager-header" onclick="togglePillarManager()">
+      <div class="pillar-manager-title">Pillar Yönetimi</div>
+      <span class="pillar-manager-toggle">▼</span>
+    </div>
+    <div class="pillar-manager-body">
+      <div id="pillar-rows"></div>
+      <div class="add-pillar-row">
+        <input class="add-pillar-input" id="add-pillar-label" placeholder="Yeni pillar adı..." onkeydown="if(event.key==='Enter')addBlogPillar()" />
+        <button class="add-pillar-btn" onclick="addBlogPillar()">+ Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="blog-layout">
+
+    <!-- SOL: Yeni fikir formu -->
+    <div class="blog-new-box">
+      <div class="blog-new-title">Yeni Fikir</div>
+      <input class="blog-input" id="blog-new-title-input" placeholder="Başlık..." />
+      <div style="font-size:var(--fs-sm);color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Pillar</div>
+      <div class="pillar-picker" id="blog-pillar-picker"></div>
+      <textarea class="blog-textarea" id="blog-new-draft" placeholder="Draft notları, ana argümanlar, referanslar, fikirler..."></textarea>
+      <div style="font-size:var(--fs-sm);color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Etiketler</div>
+      <div class="pillar-picker" id="blog-new-tag-picker" style="margin-bottom:12px;"></div>
+      <div class="blog-actions">
+        <button class="blog-ai-btn" id="blog-ai-btn" onclick="blogAICuration()">&#10022; Gemini'ye sor</button>
+        <button class="blog-save-btn" onclick="saveBlogIdea()">Kaydet</button>
+        <span id="blog-ai-loading" class="hidden" style="font-size:var(--fs-sm);color:var(--muted);font-style:italic;">Gemini düşünüyor...</span>
+      </div>
+      <div id="blog-ai-preview" class="hidden" style="margin-top:12px;">
+        <div class="blog-ai-result">
+          <div class="blog-ai-result-label">&#10022; Gemini Önerisi</div>
+          <div id="blog-ai-preview-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAĞ: Fikir listesi -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:var(--fs-sm);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;">Fikirler</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-sm" id="blog-archive-toggle-btn" onclick="toggleBlogArchiveView()" style="font-size:var(--fs-sm);color:var(--muted)">📦 Arşiv</button>
+          <div style="font-size:var(--fs-sm);color:var(--dim)" id="blog-count"></div>
+        </div>
+      </div>
+      <div id="blog-pillar-filters" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;"></div>
+      <div class="blog-list" id="blog-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ CONTENT PAGE ═══════════════ -->
+<div class="page-section" id="page-content">
+  <div class="content-layout">
+    <div class="content-box">
+      <div class="content-box-title">Ses / Video / Transkript → Blog Taslağı</div>
+
+      <div class="content-mode-row">
+        <label class="content-mode-radio">
+          <input type="radio" name="content-mode" value="record" onchange="switchContentMode('record')" />
+          <span>🎙 Ses kaydı</span>
+        </label>
+        <label class="content-mode-radio">
+          <input type="radio" name="content-mode" value="file" onchange="switchContentMode('file')" checked />
+          <span>📁 Dosya yükle</span>
+        </label>
+        <label class="content-mode-radio">
+          <input type="radio" name="content-mode" value="text" onchange="switchContentMode('text')" />
+          <span>✍ Transkript</span>
+        </label>
+      </div>
+
+      <div class="content-mode-panel" id="content-panel-record" style="display:none">
+        <div class="recorder-bar" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="gemini-btn" id="record-btn" onclick="startContentRecording()">🔴 Kaydet</button>
+          <button class="gemini-btn" id="record-pause-btn" style="display:none" onclick="pauseContentRecording()">⏸ Duraklat</button>
+          <button class="gemini-btn" id="record-resume-btn" style="display:none" onclick="resumeContentRecording()">▶ Devam</button>
+          <span id="record-status" style="font-size:var(--fs-sm);color:var(--muted);margin-left:10px"></span>
+          <span id="record-timer" style="font-size:var(--fs-sm);color:var(--dim);margin-left:8px;font-variant-numeric:tabular-nums"></span>
+        </div>
+        <div id="rec-segments" style="margin-top:8px;font-size:var(--fs-sm);color:var(--muted)"></div>
+      </div>
+
+      <div class="content-mode-panel" id="content-panel-file">
+        <input class="content-file-input" type="file" accept=".m4a,.aac,.mp3,.wav,.ogg,.flac,.webm,audio/*,video/*" id="content-file" />
+      </div>
+
+      <div class="content-mode-panel" id="content-panel-text" style="display:none">
+        <textarea class="content-textarea" id="content-transcript" placeholder="Transkript metnini buraya yapıştır..."></textarea>
+      </div>
+
+      <div class="content-field">
+        <label class="modal-label">Pillar</label>
+        <div class="pillar-picker" id="content-pillar-picker"></div>
+      </div>
+
+      <div class="content-field">
+        <label class="modal-label">Dil</label>
+        <select class="content-select" id="content-lang">
+          <option value="tr">Türkçe</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+
+      <div class="content-field">
+        <label class="modal-label">Ek not / açı (opsiyonel)</label>
+        <textarea class="content-extra-input" id="content-extra" placeholder="Varsa ek talimat, bağlam..." rows="2"></textarea>
+      </div>
+
+      <div class="content-actions">
+        <button class="gemini-btn" id="content-submit-btn" onclick="generateContentDraft()">✦ Taslağı Üret</button>
+        <span id="content-loading" class="hidden" style="font-size:var(--fs-sm);color:var(--muted);font-style:italic;">Gemini çalışıyor...</span>
+      </div>
+
+      <div id="content-draft-preview" class="hidden content-draft-box">
+        <div class="content-draft-label">Taslak</div>
+        <div id="content-draft-text" class="content-draft-text"></div>
+        <div class="content-actions" style="margin-top:8px">
+          <button class="blog-save-btn" onclick="saveContentDraft()">💾 Blog fikri olarak kaydet</button>
+          <button class="btn-sm" onclick="generateSubstackExcerpt(event)">📋 Substack çıktısı üret</button>
+          <button class="btn-sm" onclick="generateLinkedInExcerpt(event)">🔗 LinkedIn excerpt üret</button>
+        </div>
+        <div id="excerpt-result" style="display:none;margin-top:8px">
+          <div class="content-draft-label">Çıktı</div>
+          <div id="excerpt-text" style="font-size:var(--fs-sm);white-space:pre-wrap;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;margin-bottom:6px"></div>
+          <button class="btn-sm" onclick="copyExcerpt()">📋 Kopyala</button>
+        </div>
+      </div>
+      <div id="saved-drafts" style="margin-top:12px;display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PROJECT MODAL -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <h3>Yeni Proje</h3>
+    <div class="modal-field">
+      <label class="modal-label">Proje adı</label>
+      <input class="modal-input" id="modal-name" placeholder="Örn: Yeni Proje" />
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Kısa açıklama</label>
+      <input class="modal-input" id="modal-meta" placeholder="Örn: MVP aşaması · Geliştirme" />
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Durum</label>
+      <select class="modal-select" id="modal-status">
+        <option value="active">Aktif</option>
+        <option value="building">Geliştirme</option>
+        <option value="waiting">Beklemede</option>
+        <option value="cancelled">İptal</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal()">İptal</button>
+      <button class="btn-primary" onclick="addProject()">Ekle</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay hidden" id="confirm-overlay">
+  <div class="modal">
+    <h3 id="confirm-title">Onay</h3>
+    <div class="confirm-body">
+      <p id="confirm-message"></p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeConfirmModal()">Vazgeç</button>
+      <button class="btn-primary" id="confirm-btn" style="background:#dc2626;color:#fff;border-color:#dc2626">Onayla</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG — Metin editörde bu iki satırı değiştir
+// ═══════════════════════════════════════════
+const SUPABASE_URL = "https://qhutudsnbdhqvhaxaxyl.supabase.co";
+// Supabase'e şu SQL'i çalıştırdıktan sonra true yap:
+// ALTER TABLE ideas ADD COLUMN IF NOT EXISTS image text DEFAULT '';
+// ALTER TABLE ideas ADD COLUMN IF NOT EXISTS site_name text DEFAULT '';
+const SUPABASE_HAS_IMAGE_COL = true;
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFodXR1ZHNuYmRocXZoYXhheHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NDY3NjcsImV4cCI6MjA5MjQyMjc2N30.PTqGb5CA-0XCqJPwGghyqpGoaDILsQJUhht3bm1e2Vw";
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+async function parseGeminiError(res) {
+  let info = {};
+  try { info = (await res.json()).error || {}; } catch(e) {}
+  const status = info.status || res.status;
+  const msg    = info.message || "";
+  if (res.status === 429) {
+    const daily = /per ?day|daily|PerDay|günlük/i.test(msg);
+    return new Error(daily
+      ? "Günlük ücretsiz Gemini kotası doldu — yarın (Pasifik gece yarısı) sıfırlanır. Kendi API anahtarını kullan veya faturalandırmayı aç."
+      : "Dakikalık istek limiti — ~30 sn bekleyip tekrar dene.");
+  }
+  if (res.status === 403) return new Error("Anahtar reddedildi (PERMISSION_DENIED). Anahtar geçersiz ya da HTTP-referrer kısıtı bu domaini engelliyor.");
+  return new Error("Gemini hatası: " + status + " — " + msg);
+}
+// ═══════════════════════════════════════════
+
+// ─── AUTH ───
+function checkAuth() {
+  const token = sessionStorage.getItem("sb_access_token");
+  if (token) {
+    document.getElementById("login-overlay").classList.add("hidden");
+    document.getElementById("app-root").classList.remove("hidden");
+    return true;
+  }
+  return false;
+}
+
+async function login() {
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const btn = document.getElementById("login-btn");
+  const error = document.getElementById("login-error");
+
+  if (!email || !password) { error.textContent = "E-posta ve şifre girin."; error.classList.add("show"); return; }
+
+  btn.disabled = true;
+  btn.textContent = "Giriş yapılıyor...";
+  error.classList.remove("show");
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    if (res.status === 400 || res.status === 401) {
+      error.textContent = "E-posta veya şifre hatalı.";
+      error.classList.add("show");
+      btn.disabled = false;
+      btn.textContent = "Giriş";
+      return;
+    }
+
+    if (!res.ok) {
+      error.textContent = "E-posta veya şifre hatalı.";
+      error.classList.add("show");
+      btn.disabled = false;
+      btn.textContent = "Giriş";
+      return;
+    }
+
+    const data = await res.json();
+    sessionStorage.setItem("sb_access_token", data.access_token);
+
+    document.getElementById("login-overlay").classList.add("hidden");
+    document.getElementById("app-root").classList.remove("hidden");
+
+    loadTheme();
+    setDate();
+    loadBlogIdeas();
+    loadFromSupabase();
+  } catch(e) {
+    error.textContent = "E-posta veya şifre hatalı.";
+    error.classList.add("show");
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Giriş";
+}
+
+function logout() {
+  sessionStorage.removeItem("sb_access_token");
+  location.reload();
+}
+
+const COLORS = ["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#ea580c","#0891b2","#be185d","#4338ca","#15803d"];
+const CARD_BG_COLORS = ["#F8F8F6","#FBE2E2","#FAD9C8","#FBEFC8","#FCF7C8","#E6F2CE","#D5EBD8","#CDEBE6","#D2E7F0","#D5DEF2","#DCD8F2","#ECD9F0","#F6D9E8","#EADFD2","#E8E4DA","#E2E8E0","#E0E6EC","#F0E2D0","#E7DCC8","#DCE3E8"];
+const STATUS_LABELS = { active:"Aktif", building:"Geliştirme", waiting:"Beklemede", cancelled:"İptal" };
+const BADGE_CLASS   = { active:"badge-active", building:"badge-building", waiting:"badge-waiting", cancelled:"badge-cancelled" };
+const TASK_STATUS_LABELS = { todo:"Yapılacak", active:"Aktif", waiting:"Beklemede", cancelled:"İptal" };
+const TASK_PRIORITY_LABELS = { high:"🔴 Yüksek", medium:"🟡 Orta", low:"🟢 Düşük" };
+const TASK_PRIORITY_CLASS  = { high:"task-priority-high", medium:"task-priority-medium", low:"task-priority-low" };
+const SOURCE_ICONS  = { link:"🔗", twitter:"🐦", note:"📝", keep:"📌" };
+const THEME_KEY = "eren_theme";
+
+const DEFAULT_TAGS = ["Pazarlama","AI","Girişim","Ürün","Teknik","İlham","Finans","Strateji"];
+
+// ─── STATE ───
+let projects = [];
+let ideas = [];
+let tags = [...DEFAULT_TAGS];
+let expandedIds = new Set();
+let currentFilter = "all"; // always "all" after filter chips removed
+let activeTagFilter = null;
+let newIdeaSelectedTags = [];
+let taskIdCounter = 9000;
+let ideaIdCounter = 1;
+let projectDbId = null; // Supabase row id for projects blob
+let saveDebounce = null;
+let ideasSaveDebounce = {};
+
+// ─── SUPABASE HELPERS ───
+async function sbFetch(path, opts = {}) {
+  const res = await fetch(SUPABASE_URL + "/rest/v1" + path, {
+    ...opts,
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json",
+      "Prefer": opts.prefer || "return=representation",
+      ...(opts.headers || {})
+    }
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+// ─── SYNC STATUS ───
+function setSyncStatus(state, label) {
+  const dot = document.getElementById("sync-dot");
+  const lbl = document.getElementById("sync-label");
+  dot.className = "sync-dot " + (state === "ok" ? "ok" : state === "err" ? "err" : "loading");
+  lbl.textContent = label;
+}
+
+// ─── LOAD FROM SUPABASE ───
+async function loadFromSupabase() {
+  setSyncStatus("loading", "Yükleniyor...");
+  try {
+    // Load projects
+    const pRows = await sbFetch("/projects?select=id,data,updated_at&order=updated_at.desc&limit=1", { prefer: "return=representation" });
+    if (pRows && pRows.length > 0) {
+      projectDbId = pRows[0].id;
+      const saved = pRows[0].data;
+      projects = saved.projects || getDefaultProjects();
+      expandedIds = new Set(projects.map(p => p.id));
+      tags = saved.tags || [...DEFAULT_TAGS];
+    } else {
+      projects = getDefaultProjects();
+      expandedIds = new Set(projects.map(p => p.id));
+      tags = [...DEFAULT_TAGS];
+      await pushProjects();
+    }
+
+    // Load ideas
+    const iRows = await sbFetch("/ideas?select=*&order=created_at.desc");
+    if (iRows && iRows.length > 0) {
+      ideas = iRows.map(r => ({
+        id: r.id,
+        title: r.title || "",
+        summary: r.summary || "",
+        tags: r.tags || [],
+        source_type: r.source_type || "note",
+        url: r.url || "",
+        content: r.content || "",
+        image: r.image || "",
+        site: r.site_name || "",
+        created_at: r.created_at,
+        ai_generated: r.ai_generated || false
+      }));
+      ideaIdCounter = Math.max(...ideas.map(i => typeof i.id === "number" ? i.id : 0), 0) + 1;
+    }
+
+    // Load blog_ideas
+    const bRows = await sbFetch("/blog_ideas?select=*&order=created_at.desc");
+    if (bRows && bRows.length > 0) {
+      blogIdeas = bRows.map(r => ({
+        id: r.id,
+        title: r.title || "",
+        pillar: r.pillar || "P1",
+        draft: r.draft || "",
+        tags: r.tags || [],
+        aiResult: r.ai_result || null,
+        createdAt: r.created_at
+      }));
+    }
+
+    // Load blog pillars + tags from projects blob
+    if (pRows && pRows.length > 0) {
+      const saved = pRows[0].data;
+      if (saved.blogPillars && saved.blogPillars.length) blogPillars = normalizePillars(saved.blogPillars);
+      if (saved.blogTags && saved.blogTags.length) blogTags = saved.blogTags;
+    }
+
+    setSyncStatus("ok", "Senkronize");
+    render();
+    renderIdeas();
+    renderTagManager();
+    renderNewIdeaTagPicker();
+  } catch(e) {
+    setSyncStatus("err", "Bağlantı hatası");
+    // Fallback to localStorage
+    loadFromLocal();
+    loadBlogIdeas();
+    render();
+    renderIdeas();
+    renderTagManager();
+    renderNewIdeaTagPicker();
+    showToast("Supabase bağlanamadı, yerel veri kullanılıyor");
+  }
+}
+
+function loadFromLocal() {
+  try {
+    const s = localStorage.getItem("eren_wb_local");
+    if (s) {
+      const d = JSON.parse(s);
+      projects = d.projects || getDefaultProjects();
+      expandedIds = new Set(projects.map(p => p.id));
+      tags = d.tags || [...DEFAULT_TAGS];
+      ideas = d.ideas || [];
+    } else {
+      projects = getDefaultProjects();
+      expandedIds = new Set(projects.map(p => p.id));
+    }
+  } catch(e) {
+    projects = getDefaultProjects();
+    expandedIds = new Set(projects.map(p => p.id));
+  }
+}
+
+function saveToLocal() {
+  try { localStorage.setItem("eren_wb_local", JSON.stringify({ projects, tags, ideas })); } catch(e) {}
+}
+
+// ─── PUSH PROJECTS TO SUPABASE ───
+async function pushProjects() {
+  const payload = { projects, tags, blogPillars, blogTags };
+  try {
+    if (projectDbId) {
+      await sbFetch("/projects?id=eq." + projectDbId, {
+        method: "PATCH",
+        prefer: "return=representation",
+        body: JSON.stringify({ data: payload, updated_at: new Date().toISOString() })
+      });
+    } else {
+      const rows = await sbFetch("/projects", {
+        method: "POST",
+        prefer: "return=representation",
+        body: JSON.stringify({ data: payload })
+      });
+      if (rows && rows[0]) projectDbId = rows[0].id;
+    }
+    setSyncStatus("ok", "Kaydedildi");
+    saveToLocal();
+  } catch(e) {
+    setSyncStatus("err", "Kayıt hatası");
+    saveToLocal();
+  }
+}
+
+function scheduleSaveProjects() {
+  clearTimeout(saveDebounce);
+  setSyncStatus("loading", "Kaydediliyor...");
+  saveDebounce = setTimeout(() => pushProjects(), 1200);
+}
+
+// ─── PUSH IDEA TO SUPABASE ───
+async function pushIdea(idea) {
+  const { id, created_at, ai_generated, image, site, ...rest } = idea;
+  const extra = {};
+  if (SUPABASE_HAS_IMAGE_COL && image) extra.image = image;
+  if (SUPABASE_HAS_IMAGE_COL && site) extra.site_name = site;
+  try {
+    if (typeof id === "number" && id < 9000000) {
+      // existing supabase row
+      await sbFetch("/ideas?id=eq." + id, {
+        method: "PATCH",
+        prefer: "return=representation",
+        body: JSON.stringify({ ...rest, ...extra, updated_at: new Date().toISOString(), ai_generated: ai_generated || false })
+      });
+    } else {
+      // new
+      const rows = await sbFetch("/ideas", {
+        method: "POST",
+        prefer: "return=representation",
+        body: JSON.stringify({ ...rest, ...extra, ai_generated: ai_generated || false })
+      });
+      if (rows && rows[0]) idea.id = rows[0].id;
+    }
+    setSyncStatus("ok", "Kaydedildi");
+    saveToLocal();
+  } catch(e) {
+    setSyncStatus("err", "Kayıt hatası");
+    saveToLocal();
+  }
+}
+
+// ─── PUSH BLOG IDEA TO SUPABASE ───
+async function pushBlogIdea(idea) {
+  const payload = {
+    title: idea.title || "",
+    pillar: idea.pillar || "P1",
+    draft: idea.draft || "",
+    tags: idea.tags || [],
+    ai_result: idea.aiResult || null
+  };
+  try {
+    // Check if it's a real Supabase UUID (string) or a local timestamp id (number)
+    const isSupabaseRow = typeof idea.id === "string" && idea.id.length > 10;
+    if (isSupabaseRow) {
+      await sbFetch("/blog_ideas?id=eq." + idea.id, {
+        method: "PATCH",
+        prefer: "return=representation",
+        body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() })
+      });
+    } else {
+      const rows = await sbFetch("/blog_ideas", {
+        method: "POST",
+        prefer: "return=representation",
+        body: JSON.stringify(payload)
+      });
+      if (rows && rows[0]) idea.id = rows[0].id;
+    }
+    setSyncStatus("ok", "Kaydedildi");
+    saveBlogLocal();
+  } catch(e) {
+    setSyncStatus("err", "Kayıt hatası");
+    saveBlogLocal();
+  }
+}
+
+async function deleteBlogIdeaFromSupabase(id) {
+  try {
+    await sbFetch("/blog_ideas?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setSyncStatus("ok", "Silindi");
+  } catch(e) { setSyncStatus("err", "Silme hatası"); }
+}
+
+async function deleteIdeaFromSupabase(id) {
+  try {
+    await sbFetch("/ideas?id=eq." + id, { method: "DELETE", prefer: "return=minimal" });
+    setSyncStatus("ok", "Silindi");
+    saveToLocal();
+  } catch(e) { setSyncStatus("err", "Silme hatası"); }
+}
+
+// ─── SYNC TASK NAMES FROM DOM ───
+function syncTasksFromDom() {
+  projects.forEach(p => {
+    // Only sync if this card is currently expanded and rendered
+    if (!expandedIds.has(p.id)) return;
+    p.tasks.forEach(t => {
+      const el = document.getElementById("task-text-" + t.id);
+      if (el) {
+        const newText = el.innerText.trim();
+        if (newText) t.text = newText;
+      }
+    });
+    const noteEl = document.getElementById("note-" + p.id);
+    if (noteEl) p.notes = noteEl.value;
+  });
+}
+
+// ─── THEME ───
+function loadTheme() {
+  const t = localStorage.getItem(THEME_KEY) || "light";
+  document.documentElement.setAttribute("data-theme", t);
+  updateThemeBtn(t);
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "light" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem(THEME_KEY, next);
+  updateThemeBtn(next);
+}
+function updateThemeBtn(t) {
+  document.getElementById("theme-btn").textContent = t === "light" ? "🌙 Koyu" : "☀️ Açık";
+}
+
+// ─── PAGE SWITCH ───
+function switchPage(page, btn) {
+  document.querySelectorAll(".page-tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".page-section").forEach(s => s.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("page-" + page).classList.add("active");
+  if (page === "ideas") { renderIdeas(); renderTagManager(); renderNewIdeaTagPicker(); }
+  if (page === "blog") { renderPillarRows(); renderBlogPillarPicker(); renderBlogTagPicker(); renderBlogPillarFilters(); renderBlogList(); initBlogListEvents(); }
+  if (page === "content") { renderContentPillarPicker(); }
+}
+
+// ════════════════════════════════════════════
+// PROJECTS
+// ════════════════════════════════════════════
+function getDefaultProjects() {
+  return [
+    { id:1, title:"Taksi Reklamları", status:"waiting", meta:"550 taksi · Hot lead var", color:"#2563eb", notes:"", activeTab:"todo",
+      tasks:[{id:101,text:"Hot lead ile follow-up mesajı gönder",done:false},{id:102,text:"Alternatif ortakları listele (backup)",done:false},{id:103,text:"Sözleşme taslağı hazırla",done:false},{id:104,text:"Montaj fiyatlarını karşılaştır (giydirme vs LED)",done:false}]
+    },
+    { id:2, title:"AIREOS", status:"active", meta:"B2B SaaS · Next.js + Supabase", color:"#16a34a", notes:"", activeTab:"todo",
+      tasks:[{id:201,text:"Sesli yanıt sistemi (Gemini Live API)",done:false},{id:202,text:"Yazışma yapısını ve AI yanıtlarını curate et",done:false},{id:203,text:"Arayüz iyileştirmeleri",done:false},{id:204,text:"T&C ve kullanıcı sözleşmesi dokümanı",done:false},{id:205,text:"Telefon altyapısını kur (NetGSM/Zadarma)",done:false},{id:206,text:"Ödeme sistemi entegrasyonu",done:false},{id:207,text:"Sahibinden scraper / içerik çekimi",done:false},{id:208,text:"Canlı test",done:false},{id:209,text:"Outreach & müşteri avlama",done:false}]
+    },
+    { id:3, title:"Kişisel Site & Blog", status:"building", meta:"erenkumcuoglu.com · Netlify", color:"#d97706", notes:"", activeTab:"todo",
+      tasks:[{id:301,text:"DNS propagation kontrolü",done:false},{id:302,text:"Blog altyapısını ayağa kaldır",done:false},{id:303,text:"Eski blog yazılarını çek ve yayınla",done:false},{id:304,text:"Content planı oluştur",done:false},{id:305,text:"İlk 3 içeriği üret",done:false}]
+    },
+    { id:4, title:"YouTube İçerik", status:"building", meta:"Günlük senaryo · Framework bazlı", color:"#dc2626", notes:"", activeTab:"todo",
+      tasks:[{id:401,text:"Senaryo framework'ünü belirle",done:false},{id:402,text:"İlk 7 günlük senaryo stoku oluştur",done:false},{id:403,text:"Kayıt ve prodüksiyon workflow'u kur",done:false},{id:404,text:"Kanal setup & branding",done:false}]
+    },
+    { id:5, title:"Emlak AI Danışmanı", status:"active", meta:"Yazılımcı var · Yönlendirme gerekli", color:"#7c3aed", notes:"", activeTab:"todo",
+      tasks:[{id:501,text:"Ürün paketleme dokümanı yaz",done:false},{id:502,text:"Hedef kullanıcı formatını belirle",done:false},{id:503,text:"Yazılımcıya sprint listesi ilet",done:false},{id:504,text:"İlk demo/sunum versiyonunu hazırla",done:false}]
+    },
+    { id:6, title:"Omega / Epin Dağıtım", status:"waiting", meta:"Pre-purchase gerekli · Sermaye bekliyor", color:"#ea580c", notes:"", activeTab:"todo",
+      tasks:[{id:601,text:"Distribütör API'yi sanal makinede çalıştır",done:false},{id:602,text:"CMS'i sanal makinede çalıştır",done:false},{id:603,text:"CMS arayüz geliştirmeleri",done:false},{id:604,text:"Satış kanalı entegrasyonları",done:false}]
+    }
+  ];
+}
+
+function render() {
+  const grid = document.getElementById("grid");
+  const activeProjects = projects.filter(p => !p.archived);
+  const filtered = activeProjects;
+
+  grid.innerHTML = filtered.length === 0
+    ? `<div class="empty-state">Bu filtrede proje yok</div>`
+    : filtered.map(p => {
+      const todo = p.tasks.filter(t => !t.done && t.status !== "deleted");
+      const done = p.tasks.filter(t => t.done && t.status !== "deleted");
+      const deleted = p.tasks.filter(t => t.status === "deleted");
+      const activeTasks = p.tasks.filter(t => t.status !== "deleted");
+      const pct = activeTasks.length ? Math.round(done.length / activeTasks.length * 100) : 0;
+      const isExp = expandedIds.has(p.id);
+      const activeTab = p.activeTab || "todo";
+      const todoHtml = todo.map(t => taskHtml(t, p.id)).join("") || "<div style=\"padding:8px 4px;color:var(--dim);font-size:var(--fs-sm)\">G\u00f6rev yok</div>";
+      const doneHtml = done.map(t => taskHtml(t, p.id)).join("") || "<div style=\"padding:8px 4px;color:var(--dim);font-size:var(--fs-sm)\">Tamamlanan yok</div>";
+      const binCount = deleted.length;
+      const binHtml = binCount === 0
+        ? `<div style="padding:8px 4px;color:var(--dim);font-size:var(--fs-sm)">Silinen görev yok</div>`
+        : deleted.map(t => taskBinHtml(t, p.id)).join("");
+
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const cardBg = p.bg ? (isDark ? `color-mix(in srgb, ${p.bg} 22%, var(--surface))` : p.bg) : null;
+      return `
+      <div class="card ${isExp?'expanded':''}${p.bg?' has-bg':''}" id="card-${p.id}"
+        draggable="true"
+        ondragstart="cardDragStart(event,${p.id})"
+        ondragover="cardDragOver(event,${p.id})"
+        ondragleave="cardDragLeave(event,${p.id})"
+        ondrop="cardDrop(event,${p.id})"
+        style="${cardBg ? '--card-bg:' + cardBg : ''}">
+        <div class="card-header" onclick="toggleCard(${p.id})">
+          <button class="drag-handle" title="Sürükle" onclick="event.stopPropagation()" draggable="false">⠿</button>
+          <div class="card-title-wrap">
+            <div class="card-title" id="title-${p.id}" contenteditable="true" spellcheck="false"
+              onclick="event.stopPropagation()"
+              onblur="saveTitleBlur(${p.id})"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+            >${esc(p.title)}</div>
+            <div class="card-meta" id="meta-${p.id}" contenteditable="true" spellcheck="false"
+              onclick="event.stopPropagation()"
+              onblur="saveMetaBlur(${p.id})"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+            >${esc(p.meta)}</div>
+          </div>
+          <button class="card-chevron" onclick="event.stopPropagation();toggleCard(${p.id})">▼</button>
+        </div>
+        <div class="kebab-wrap">
+          <button class="kebab-btn" onclick="event.stopPropagation();toggleKebab(${p.id})">⋯</button>
+          <div class="kebab-dropdown" id="kebab-menu-${p.id}">
+            <button onclick="event.stopPropagation();showColorPicker(${p.id})">🎨 Renk değiştir</button>
+            <div class="color-swatches hidden" id="color-swatches-${p.id}"></div>
+            <button onclick="event.stopPropagation();confirmArchive(${p.id})">📦 Arşivle</button>
+            <button onclick="event.stopPropagation();confirmDelete(${p.id})">🗑 Sil</button>
+          </div>
+        </div>
+        <div class="card-progress">
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${p.color}"></div></div>
+          <div class="progress-label">${done.length}/${activeTasks.length} görev · %${pct}</div>
+        </div>
+        <div class="card-body">
+          <div class="tabs">
+            <button class="tab ${activeTab==='todo'?'active':''}" onclick="switchTab(${p.id},'todo')">Yapılacak <span class="tab-count">${todo.length}</span></button>
+            <button class="tab ${activeTab==='done'?'active':''}" onclick="switchTab(${p.id},'done')">Tamamlanan <span class="tab-count">${done.length}</span></button>
+            <button class="tab ${activeTab==='bin'?'active':''}" onclick="switchTab(${p.id},'bin')" style="${binCount>0?'color:#dc2626':''}" title="Silinen görevler — geri getirilebilir">🗑 <span class="tab-count">${binCount}</span></button>
+            <button class="tab ${activeTab==='notes'?'active':''}" onclick="switchTab(${p.id},'notes')">Not</button>
+          </div>
+          <div class="${activeTab==='todo'?'':'hidden'}">
+            <div class="task-list" id="task-list-${p.id}" data-pid="${p.id}">${todoHtml}</div>
+            <div class="add-task-row">
+              <input class="add-task-input" id="new-task-${p.id}" placeholder="Görev ekle..." onkeydown="if(event.key==='Enter')addTask(${p.id})"/>
+              <button class="add-task-btn" onclick="addTask(${p.id})">+ Ekle</button>
+            </div>
+          </div>
+          <div class="${activeTab==='done'?'':'hidden'}">
+            <div class="task-list">${doneHtml}</div>
+          </div>
+          <div class="${activeTab==='bin'?'':'hidden'}">
+            <div class="task-list">${binHtml}</div>
+            ${binCount>0 ? `<div style="padding:6px 12px 10px;border-top:1px solid var(--border)"><button class="btn-sm btn-danger" onclick="emptyBin(${p.id})">Geri dönüşümü boşalt</button></div>` : ""}
+          </div>
+          <div class="${activeTab==='notes'?'':'hidden'}">
+            <div class="note-area">
+              <div class="note-label">Not</div>
+              <textarea class="note-input" id="note-${p.id}" placeholder="Proje notları..." onblur="saveNoteBlur(${p.id})">${esc(p.notes||"")}</textarea>
+            </div>
+          </div>
+          <div class="card-actions"></div>
+        </div>
+      </div>`;
+    }).join("");
+
+  updateStats();
+  renderFocusFromPriorities();
+}
+
+function taskHtml(t, pid) {
+  const tid = t.id;
+  const priorityClass = t.priority ? TASK_PRIORITY_CLASS[t.priority] : "";
+  const priorityLabel = t.priority ? TASK_PRIORITY_LABELS[t.priority] : "Öncelik";
+
+  let deadlineHtml = "";
+  if (t.deadline) {
+    const dl = new Date(t.deadline);
+    const now = new Date(); now.setHours(0,0,0,0);
+    const diff = Math.round((dl - now) / 86400000);
+    const dlCls = diff < 0 ? "overdue" : diff <= 2 ? "soon" : "";
+    const dlText = diff < 0 ? "\u26a0 " + Math.abs(diff) + "g ge\u00e7ti" : diff === 0 ? "\u26a1 Bug\u00fcn" : diff === 1 ? "\u23f0 Yar\u0131n" : "\uD83D\uDCC5 " + dl.toLocaleDateString("tr-TR",{day:"numeric",month:"short"});
+    deadlineHtml = "<button class=\"task-deadline-badge " + dlCls + "\" onclick=\"openTaskEdit(event," + pid + "," + tid + ")\" title=\"Deadline d\u00fczenle\">" + dlText + "</button>";
+  }
+
+  return (
+    "<div class=\"task-item" + (t.done ? " task-done-row" : "") + "\" id=\"task-item-" + tid + "\"" +
+    " draggable=\"true\"" +
+    " ondragstart=\"taskDragStart(event," + pid + "," + tid + ")\"" +
+    " ondragover=\"taskDragOver(event," + pid + "," + tid + ")\"" +
+    " ondragleave=\"taskDragLeave(event," + pid + "," + tid + ")\"" +
+    " ondrop=\"taskDrop(event," + pid + "," + tid + ")\"" +
+    " onpointerdown=\"taskPointerDown(event," + pid + "," + tid + ")\"" +
+    " onpointermove=\"taskPointerMove(event," + pid + "," + tid + ")\"" +
+    " onpointerup=\"taskPointerUp(event," + pid + "," + tid + ")\">" +
+    "<div class=\"task-cb" + (t.done ? " done" : "") + "\" onclick=\"toggleTask(" + pid + "," + tid + ")\"></div>" +
+    "<div class=\"task-text-wrap\">" +
+      "<span class=\"task-text" + (t.done ? " task-done-text" : "") + "\" id=\"task-text-" + tid + "\"" +
+      " contenteditable=\"true\"" +
+      " onblur=\"saveTaskName(" + pid + "," + tid + ")\"" +
+      " onkeydown=\"if(event.key==='Enter'){event.preventDefault();this.blur()}\">" +
+      esc(t.text) + "</span>" +
+      ((t.priority || t.deadline) ?
+        "<div class=\"task-meta-row\">" +
+          (t.priority ? "<button class=\"task-priority-badge " + priorityClass + "\" onclick=\"openTaskEdit(event," + pid + "," + tid + ")\">" + priorityLabel + "</button>" : "") +
+          deadlineHtml +
+        "</div>" : "") +
+    "</div>" +
+    "<button class=\"task-del\" onclick=\"deleteTask(" + pid + "," + tid + ")\">×</button>" +
+    "<button class=\"task-edit-btn\" onclick=\"openTaskEdit(event," + pid + "," + tid + ")\" title=\"\u00d6ncelik & deadline\">\u2699</button>" +
+    "</div>"
+  );
+}
+
+// Show edit button on hover via CSS — add hover show
+document.addEventListener("mouseover", function(e) {
+  const item = e.target.closest(".task-item");
+  if (item) {
+    const btn = item.querySelector("[id^='task-edit-btn-']");
+    if (btn) btn.style.opacity = "1";
+  }
+});
+document.addEventListener("mouseout", function(e) {
+  const item = e.target.closest(".task-item");
+  if (item && !item.contains(e.relatedTarget)) {
+    const btn = item.querySelector("[id^='task-edit-btn-']");
+    if (btn) btn.style.opacity = "0";
+  }
+});
+
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ─── PROJECT ACTIONS ───
+function toggleCard(id) {
+  syncTasksFromDom();
+  if (expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
+  render();
+}
+
+function switchTab(pid, tab) {
+  syncTasksFromDom();
+  const p = projects.find(x => x.id === pid);
+  if (p) { p.activeTab = tab; scheduleSaveProjects(); render(); }
+}
+
+function toggleTask(pid, tid) {
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  const t = p.tasks.find(x => x.id === tid);
+  if (t) { t.done = !t.done; scheduleSaveProjects(); render(); }
+}
+
+function saveTaskName(pid, tid) {
+  const p = projects.find(x => x.id === pid);
+  const el = document.getElementById("task-text-" + tid);
+  if (!p || !el) return;
+  const t = p.tasks.find(x => x.id === tid);
+  if (t) { t.text = el.innerText.trim() || t.text; scheduleSaveProjects(); }
+}
+
+function saveNoteBlur(pid) {
+  const el = document.getElementById("note-" + pid);
+  const p = projects.find(x => x.id === pid);
+  if (p && el) { p.notes = el.value; scheduleSaveProjects(); }
+}
+
+function deleteTask(pid, tid) {
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  const t = p.tasks.find(x => x.id === tid);
+  if (!t) return;
+  // Soft delete: move to "deleted" status with timestamp instead of removing
+  t.status = "deleted";
+  t.deletedAt = new Date().toISOString();
+  scheduleSaveProjects();
+  render();
+}
+
+function restoreTask(pid, tid) {
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  const t = p.tasks.find(x => x.id === tid);
+  if (t) { t.status = "todo"; delete t.deletedAt; scheduleSaveProjects(); render(); }
+}
+
+function hardDeleteTask(pid, tid) {
+  if (!confirm("Bu görevi kalıcı olarak sil?")) return;
+  const p = projects.find(x => x.id === pid);
+  if (p) { p.tasks = p.tasks.filter(t => t.id !== tid); scheduleSaveProjects(); render(); }
+}
+
+function addTask(pid) {
+  const input = document.getElementById("new-task-" + pid);
+  const text = input ? input.value.trim() : "";
+  if (!text) return;
+  const p = projects.find(x => x.id === pid);
+  if (p) {
+    const newId = Date.now() + Math.floor(Math.random() * 1000);
+    p.tasks.push({ id: newId, text, done: false, status: "todo", priority: null, deadline: null });
+    input.value = "";
+    scheduleSaveProjects();
+    render();
+  }
+}
+
+function deleteProject(pid) {
+  if (!confirm("Bu projeyi silmek istediğine emin misin?")) return;
+  projects = projects.filter(x => x.id !== pid);
+  expandedIds.delete(pid);
+  scheduleSaveProjects();
+  render();
+}
+
+function saveMetaBlur(pid) {
+  const el = document.getElementById("meta-" + pid);
+  const p = projects.find(x => x.id === pid);
+  if (p && el) { p.meta = el.innerText.trim() || p.meta; scheduleSaveProjects(); }
+}
+
+function saveTitleBlur(pid) {
+  const el = document.getElementById("title-" + pid);
+  const p = projects.find(x => x.id === pid);
+  if (p && el) { p.title = el.innerText.trim() || p.title; scheduleSaveProjects(); }
+}
+
+// ─── BIN (deleted tasks) ───
+function taskBinHtml(t, pid) {
+  const tid = t.id;
+  const delDate = t.deletedAt ? new Date(t.deletedAt).toLocaleDateString("tr-TR",{day:"numeric",month:"short"}) : "";
+  return `
+  <div class="task-item" id="task-item-${tid}" style="opacity:0.7">
+    <div style="width:15px;height:15px;flex-shrink:0;color:var(--dim);font-size:12px;display:flex;align-items:center;justify-content:center;">🗑</div>
+    <div class="task-text-wrap">
+      <span class="task-text task-done-text">${esc(t.text)}</span>
+      ${delDate ? `<div class="task-meta-row"><span style="font-size:10px;color:var(--dim)">${delDate} silindi</span></div>` : ""}
+    </div>
+    <button class="btn-sm" onclick="restoreTask(${pid},${tid})" title="Geri getir" style="font-size:11px;padding:2px 7px;color:var(--accent)">↩ Geri al</button>
+    <button class="task-del" onclick="hardDeleteTask(${pid},${tid})" title="Kalıcı sil" style="opacity:1">×</button>
+  </div>`;
+}
+
+function emptyBin(pid) {
+  if (!confirm("Silinen görevleri kalıcı olarak temizle?")) return;
+  const p = projects.find(x => x.id === pid);
+  if (p) { p.tasks = p.tasks.filter(t => t.status !== "deleted"); scheduleSaveProjects(); render(); }
+}
+
+// ─── KEbab MENU ───
+function toggleKebab(pid) {
+  const menu = document.getElementById("kebab-menu-" + pid);
+  if (!menu) return;
+  const isOpen = menu.classList.contains("open");
+  closeAllKebabs();
+  if (!isOpen) menu.classList.add("open");
+}
+
+function closeAllKebabs() {
+  document.querySelectorAll(".kebab-dropdown").forEach(el => el.classList.remove("open"));
+}
+
+function showColorPicker(pid) {
+  const swatches = document.getElementById("color-swatches-" + pid);
+  if (!swatches) return;
+  const isVisible = !swatches.classList.contains("hidden");
+  document.querySelectorAll(".color-swatches").forEach(el => el.classList.add("hidden"));
+  if (isVisible) {
+    swatches.classList.add("hidden");
+  } else {
+    const p = projects.find(x => x.id === pid);
+    swatches.innerHTML = CARD_BG_COLORS.map((c, i) => {
+      const cur = (!i && !p?.bg) || (i > 0 && p?.bg === c);
+      return `<div class="color-swatch-item${cur ? ' active' : ''}" style="background:${c}" onclick="event.stopPropagation();setCardBg(${pid},'${i===0 ? '' : c}')" title="${i===0?'Varsayılan':c}"></div>`;
+    }).join("");
+    swatches.classList.remove("hidden");
+  }
+}
+
+function setCardBg(pid, bg) {
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  p.bg = bg || undefined;
+  closeAllKebabs();
+  scheduleSaveProjects();
+  render();
+}
+
+function confirmArchive(pid) {
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  closeAllKebabs();
+  showConfirm(`"${p.title}" arşivlensin mi?`, () => archiveProject(pid));
+}
+
+function confirmDelete(pid) {
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  closeAllKebabs();
+  showConfirm(`"${p.title}" kalıcı olarak silinsin mi?`, () => deleteProject(pid));
+}
+
+// ─── CONFIRM MODAL ───
+let confirmCallback = null;
+
+function showConfirm(msg, callback) {
+  document.getElementById("confirm-message").textContent = msg;
+  confirmCallback = callback;
+  document.getElementById("confirm-overlay").classList.remove("hidden");
+}
+
+function closeConfirmModal() {
+  document.getElementById("confirm-overlay").classList.add("hidden");
+  confirmCallback = null;
+}
+
+document.getElementById("confirm-btn").addEventListener("click", function() {
+  if (confirmCallback) confirmCallback();
+  closeConfirmModal();
+});
+
+document.getElementById("confirm-overlay").addEventListener("click", function(e) {
+  if (e.target === this) closeConfirmModal();
+});
+
+document.addEventListener("click", function(e) {
+  if (!e.target.closest(".kebab-wrap")) closeAllKebabs();
+});
+
+// ─── PROJECT ARCHIVE ───
+function archiveProject(pid) {
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  p.archived = true;
+  p.archivedAt = new Date().toISOString();
+  expandedIds.delete(pid);
+  scheduleSaveProjects();
+  render();
+  renderArchiveCount();
+  showToast(`"${p.title}" arşivlendi`);
+}
+
+function unarchiveProject(pid) {
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  p.archived = false;
+  delete p.archivedAt;
+  scheduleSaveProjects();
+  renderProjectArchive();
+  render();
+  renderArchiveCount();
+  showToast(`"${p.title}" arşivden çıkarıldı`);
+}
+
+function renderArchiveCount() {
+  const archived = projects.filter(p => p.archived);
+  const btn = document.getElementById("archive-btn");
+  if (btn) btn.textContent = `📦 Arşiv${archived.length > 0 ? " (" + archived.length + ")" : ""}`;
+}
+
+function toggleProjectArchive() {
+  const panel = document.getElementById("project-archive-panel");
+  if (!panel) return;
+  panel.classList.toggle("hidden");
+  renderProjectArchive();
+}
+
+function renderProjectArchive() {
+  const list = document.getElementById("project-archive-list");
+  if (!list) return;
+  const archived = projects.filter(p => p.archived).sort((a,b) => new Date(b.archivedAt||0) - new Date(a.archivedAt||0));
+  if (archived.length === 0) {
+    list.innerHTML = `<div style="padding:12px;color:var(--dim);font-size:var(--fs-sm)">Arşiv boş</div>`;
+    return;
+  }
+  list.innerHTML = archived.map(p => {
+    const done = p.tasks.filter(t => t.done).length;
+    const total = p.tasks.filter(t => t.status !== "deleted").length;
+    const dateStr = p.archivedAt ? new Date(p.archivedAt).toLocaleDateString("tr-TR",{day:"numeric",month:"short",year:"numeric"}) : "";
+    return `<div class="archive-row">
+      <div class="archive-row-color" style="background:${p.color}"></div>
+      <div class="archive-row-info">
+        <div class="archive-row-title">${esc(p.title)}</div>
+        <div class="archive-row-meta">${esc(p.meta)} · ${done}/${total} görev · ${dateStr}</div>
+      </div>
+      <button class="btn-sm" onclick="unarchiveProject(${p.id})" style="flex-shrink:0">↩ Geri al</button>
+      <button class="btn-sm btn-danger" onclick="permanentDeleteProject(${p.id})" style="flex-shrink:0">Sil</button>
+    </div>`;
+  }).join("");
+}
+
+function permanentDeleteProject(pid) {
+  if (!confirm("Bu projeyi kalıcı olarak sil?")) return;
+  projects = projects.filter(x => x.id !== pid);
+  scheduleSaveProjects();
+  renderProjectArchive();
+  renderArchiveCount();
+}
+
+// ─── TASK INLINE EDIT (priority + deadline + status) ───
+let activeInlineEdit = null;
+function openTaskEdit(e, pid, tid) {
+  e.stopPropagation();
+  // Close existing
+  if (activeInlineEdit) { activeInlineEdit.remove(); activeInlineEdit = null; }
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  const t = p.tasks.find(x => x.id === tid);
+  if (!t) return;
+
+  const el = document.getElementById("task-item-" + tid);
+  if (!el) return;
+
+  const box = document.createElement("div");
+  box.className = "task-inline-edit";
+  box.innerHTML = `
+    <label>Öncelik</label>
+    <select id="ie-priority">
+      <option value="">— Yok —</option>
+      <option value="high" ${t.priority==='high'?'selected':''}>🔴 Yüksek</option>
+      <option value="medium" ${t.priority==='medium'?'selected':''}>🟡 Orta</option>
+      <option value="low" ${t.priority==='low'?'selected':''}>🟢 Düşük</option>
+    </select>
+    <label>Deadline</label>
+    <input type="date" id="ie-deadline" value="${t.deadline||''}" />
+    <label>Durum</label>
+    <select id="ie-status">
+      <option value="todo" ${(!t.status||t.status==='todo')?'selected':''}>Yapılacak</option>
+      <option value="active" ${t.status==='active'?'selected':''}>Aktif</option>
+      <option value="waiting" ${t.status==='waiting'?'selected':''}>Beklemede</option>
+      <option value="cancelled" ${t.status==='cancelled'?'selected':''}>İptal</option>
+    </select>
+    <button class="close-inline" onclick="applyTaskEdit(${pid},${tid})">✓ Kaydet & Kapat</button>
+  `;
+  el.style.position = "relative";
+  el.appendChild(box);
+  activeInlineEdit = box;
+
+  setTimeout(() => {
+    document.addEventListener("click", function closeEdit(ev) {
+      if (!box.contains(ev.target)) { applyTaskEdit(pid, tid); document.removeEventListener("click", closeEdit); }
+    });
+  }, 100);
+}
+
+function applyTaskEdit(pid, tid) {
+  if (!activeInlineEdit) return;
+  const p = projects.find(x => x.id === pid);
+  if (!p) { activeInlineEdit && activeInlineEdit.remove(); activeInlineEdit = null; return; }
+  const t = p.tasks.find(x => x.id === tid);
+  if (t) {
+    const ps = document.getElementById("ie-priority");
+    const ds = document.getElementById("ie-deadline");
+    const ss = document.getElementById("ie-status");
+    if (ps) t.priority = ps.value || null;
+    if (ds) t.deadline = ds.value || null;
+    if (ss) t.status = ss.value || "todo";
+    scheduleSaveProjects();
+  }
+  activeInlineEdit.remove();
+  activeInlineEdit = null;
+  render();
+}
+
+function cycleTaskStatus(pid, tid) {
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  const t = p.tasks.find(x => x.id === tid);
+  if (!t) return;
+  const cycle = ["todo", "active", "waiting", "cancelled"];
+  const cur = cycle.indexOf(t.status || "todo");
+  t.status = cycle[(cur + 1) % cycle.length];
+  scheduleSaveProjects();
+  render();
+}
+
+// ─── PROJECT CARD DRAG & DROP ───
+let dragCardId = null;
+function cardDragStart(e, pid) {
+  syncTasksFromDom();
+  dragCardId = pid;
+  e.dataTransfer.effectAllowed = "move";
+  setTimeout(() => { const el = document.getElementById("card-" + pid); if (el) el.classList.add("card-dragging"); }, 0);
+}
+function cardDragOver(e, pid) {
+  if (dragCardId === pid) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  document.querySelectorAll(".card").forEach(c => c.classList.remove("card-drag-over"));
+  const el = document.getElementById("card-" + pid);
+  if (el) el.classList.add("card-drag-over");
+}
+function cardDragLeave(e, pid) {
+  const el = document.getElementById("card-" + pid);
+  if (el && !el.contains(e.relatedTarget)) el.classList.remove("card-drag-over");
+}
+function cardDrop(e, pid) {
+  e.preventDefault();
+  document.querySelectorAll(".card").forEach(c => { c.classList.remove("card-drag-over"); c.classList.remove("card-dragging"); });
+  if (dragCardId === null || dragCardId === pid) { dragCardId = null; return; }
+  const fromIdx = projects.findIndex(p => p.id === dragCardId);
+  const toIdx = projects.findIndex(p => p.id === pid);
+  if (fromIdx === -1 || toIdx === -1) { dragCardId = null; return; }
+  const [moved] = projects.splice(fromIdx, 1);
+  projects.splice(toIdx, 0, moved);
+  dragCardId = null;
+  scheduleSaveProjects();
+  render();
+}
+
+// ─── TASK LONG-PRESS DRAG (touch) ───
+let lpTimer = null, lpPid = null, lpTaskId = null, lpActive = false;
+let lpStartY = 0, lpDropTaskId = null;
+
+function taskPointerDown(e, pid, tid) {
+  if (e.pointerType === 'mouse') return;
+  lpPid = pid; lpTaskId = tid; lpStartY = e.clientY;
+  lpActive = false; lpDropTaskId = null;
+  lpTimer = setTimeout(() => {
+    lpActive = true;
+    document.getElementById("task-item-" + tid)?.classList.add("dragging");
+  }, 350);
+}
+
+function taskPointerMove(e, pid, tid) {
+  if (lpActive && lpTaskId === tid) {
+    e.preventDefault();
+    const list = document.getElementById("task-item-" + tid)?.parentElement;
+    if (!list) return;
+    const items = [...list.querySelectorAll(".task-item")];
+    items.forEach(el => el.classList.remove("drag-over"));
+    let target = null;
+    for (const item of items) {
+      if (item.id === "task-item-" + tid) continue;
+      const r = item.getBoundingClientRect();
+      if (e.clientY > r.top && e.clientY < r.bottom) { target = item; break; }
+    }
+    if (target) {
+      target.classList.add("drag-over");
+      lpDropTaskId = parseInt(target.id.replace("task-item-", ""));
+    } else {
+      lpDropTaskId = null;
+    }
+  } else if (lpTimer && Math.abs(e.clientY - lpStartY) > 10) {
+    clearTimeout(lpTimer); lpTimer = null;
+  }
+}
+
+function taskPointerUp(e, pid, tid) {
+  clearTimeout(lpTimer); lpTimer = null;
+  document.querySelectorAll(".task-item").forEach(el => el.classList.remove("dragging", "drag-over"));
+  if (lpActive && lpDropTaskId !== null && lpDropTaskId !== tid && lpPid === pid) {
+    const p = projects.find(x => x.id === pid);
+    if (p) {
+      const fromIdx = p.tasks.findIndex(t => t.id === tid);
+      const toIdx = p.tasks.findIndex(t => t.id === lpDropTaskId);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const [moved] = p.tasks.splice(fromIdx, 1);
+        p.tasks.splice(toIdx, 0, moved);
+        scheduleSaveProjects();
+        render();
+      }
+    }
+  }
+  lpActive = false; lpDropTaskId = null;
+}
+
+// ─── TASK DRAG & DROP ───
+let dragTaskPid = null;
+let dragTaskId = null;
+function taskDragStart(e, pid, tid) {
+  dragTaskPid = pid;
+  dragTaskId = tid;
+  e.dataTransfer.effectAllowed = "move";
+  setTimeout(() => { const el = document.getElementById("task-item-" + tid); if (el) el.classList.add("dragging"); }, 0);
+}
+function taskDragOver(e, pid, tid) {
+  if (dragTaskId === tid) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  document.querySelectorAll(".task-item").forEach(el => el.classList.remove("drag-over"));
+  const el = document.getElementById("task-item-" + tid);
+  if (el) el.classList.add("drag-over");
+}
+function taskDragLeave(e, pid, tid) {
+  const el = document.getElementById("task-item-" + tid);
+  if (el && !el.contains(e.relatedTarget)) el.classList.remove("drag-over");
+}
+function taskDrop(e, pid, tid) {
+  e.preventDefault();
+  document.querySelectorAll(".task-item").forEach(el => { el.classList.remove("drag-over"); el.classList.remove("dragging"); });
+  if (!dragTaskId || dragTaskId === tid || dragTaskPid !== pid) { dragTaskId = null; dragTaskPid = null; return; }
+  const p = projects.find(x => x.id === pid);
+  if (!p) { dragTaskId = null; dragTaskPid = null; return; }
+  const fromIdx = p.tasks.findIndex(t => t.id === dragTaskId);
+  const toIdx = p.tasks.findIndex(t => t.id === tid);
+  if (fromIdx === -1 || toIdx === -1) { dragTaskId = null; dragTaskPid = null; return; }
+  const [moved] = p.tasks.splice(fromIdx, 1);
+  p.tasks.splice(toIdx, 0, moved);
+  dragTaskId = null;
+  dragTaskPid = null;
+  scheduleSaveProjects();
+  render();
+}
+
+// ─── ADD PROJECT MODAL ───
+function openAddProject() {
+  document.getElementById("modal-overlay").classList.remove("hidden");
+  setTimeout(() => document.getElementById("modal-name").focus(), 50);
+}
+function closeModal() {
+  document.getElementById("modal-overlay").classList.add("hidden");
+  document.getElementById("modal-name").value = "";
+  document.getElementById("modal-meta").value = "";
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeModal(); closeConfirmModal(); } });
+document.getElementById("modal-overlay").addEventListener("click", function(e) { if (e.target === this) closeModal(); });
+function addProject() {
+  const name = document.getElementById("modal-name").value.trim();
+  if (!name) { document.getElementById("modal-name").focus(); return; }
+  const meta = document.getElementById("modal-meta").value.trim() || "Yeni proje";
+  const status = document.getElementById("modal-status").value;
+  const newId = projects.length ? Math.max(...projects.map(p => p.id)) + 1 : 1;
+  const color = COLORS[(newId - 1) % COLORS.length];
+  projects.push({ id: newId, title: name, status, meta, color, notes: "", activeTab: "todo", tasks: [] });
+  expandedIds = new Set(projects.map(p => p.id));
+  closeModal();
+  scheduleSaveProjects();
+  render();
+  showToast("Proje eklendi");
+}
+
+// ─── DAILY BRIEF (Anthropic Claude API) ───
+
+
+// ─── STATS (kept for internal use) ───
+function updateStats() {
+  // Stats panel removed from UI — kept for potential future use
+}
+
+// ─── FOCUS: Önceliklere göre ───
+function renderFocusFromPriorities() {
+  const list = document.getElementById("focus-list");
+  if (list.dataset.aiLoaded) return; // AI yanıtı varsa dokunma
+
+  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2, null: 3, undefined: 3 };
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Tüm aktif (cancelled olmayan, done olmayan) taskları topla
+  let items = [];
+  projects.forEach(p => {
+    if (p.status === "cancelled") return;
+    p.tasks.forEach(t => {
+      if (t.done || t.status === "cancelled") return;
+      let urgency = PRIORITY_ORDER[t.priority] ?? 3;
+      // Deadline varsa urgency'yi artır
+      if (t.deadline) {
+        const dl = new Date(t.deadline);
+        const diff = Math.round((dl - today) / 86400000);
+        if (diff < 0) urgency -= 2; // geçmiş deadline = çok acil
+        else if (diff === 0) urgency -= 1.5;
+        else if (diff <= 2) urgency -= 1;
+      }
+      items.push({ text: t.text, project: p.title, color: p.color, urgency, priority: t.priority, deadline: t.deadline });
+    });
+  });
+
+  // Sort by urgency
+  items.sort((a, b) => a.urgency - b.urgency);
+  const top = items.slice(0, 5);
+
+  if (top.length === 0) {
+    list.innerHTML = `<div class="focus-item"><div class="focus-dot" style="background:var(--dim)"></div><div style="color:var(--muted)">Henüz öncelikli görev yok — task'lere öncelik ata</div></div>`;
+    return;
+  }
+
+  list.innerHTML = top.map(i => {
+    const prioIcon = i.priority === "high" ? "🔴 " : i.priority === "medium" ? "🟡 " : i.priority === "low" ? "🟢 " : "";
+    const dlStr = i.deadline ? (() => {
+      const dl = new Date(i.deadline);
+      const diff = Math.round((dl - today) / 86400000);
+      return diff < 0 ? ` <span style="color:#dc2626;font-weight:600">(${Math.abs(diff)}g geçti!)</span>` :
+             diff === 0 ? ` <span style="color:#d97706;font-weight:600">(Bugün)</span>` :
+             diff === 1 ? ` <span style="color:#d97706">(Yarın)</span>` : "";
+    })() : "";
+    return `<div class="focus-item">
+      <div class="focus-dot" style="background:${i.color}"></div>
+      <div><strong>${prioIcon}${esc(i.project)}:</strong> ${esc(i.text)}${dlStr}</div>
+    </div>`;
+  }).join("");
+}
+
+// ─── GEMINI FOCUS ───
+async function getAIFocus() {
+  const btn = document.getElementById("focus-btn");
+  const list = document.getElementById("focus-list");
+  btn.disabled = true;
+  btn.textContent = "Düşünüyor...";
+  list.innerHTML = `<div class="focus-loading">Gemini projelerin analiz ediyor...</div>`;
+
+  const summary = projects.map(p => {
+    const done = p.tasks.filter(t => t.done).length;
+    const todo = p.tasks.filter(t => !t.done && t.status !== "cancelled");
+    const highPrio = todo.filter(t => t.priority === "high").map(t => t.text);
+    const medPrio = todo.filter(t => t.priority === "medium").map(t => t.text);
+    const others = todo.filter(t => !t.priority).map(t => t.text);
+    return `• ${p.title} [${STATUS_LABELS[p.status]}] — ${done}/${p.tasks.length} görev tamamlandı. Yüksek öncelikli: ${highPrio.slice(0,3).join(", ")||"yok"}. Orta: ${medPrio.slice(0,2).join(", ")||"yok"}. Diğer: ${others.slice(0,3).join(", ")||"yok"}. Not: ${p.notes||"yok"}.`;
+  }).join("\n");
+
+  const prompt = `Sen bir üretkenlik koçusun. Aşağıda Eren'in aktif projelerin durumu ve görev öncelikleri var. Bugün için net, somut 4-5 maddelik odak önerisi ver. Her madde maksimum 1-2 cümle olsun. Türkçe yaz. Bağlam: Eren İstanbul'da çoklu girişim yürüten bir girişimci. En yüksek öncelikli ve deadline'ı geçen görevleri öne al.\n\n${summary}`;
+
+  try {
+    const res = await fetch("/.netlify/functions/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: GEMINI_MODEL, payload: { contents: [{ parts: [{ text: prompt }] }] } })
+    });
+    if (!res.ok) throw await parseGeminiError(res);
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (!text) throw new Error("Boş yanıt");
+
+    const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 3 && (l.startsWith("-") || l.startsWith("•") || l.match(/^\d+\./)));
+    list.dataset.aiLoaded = "1";
+    list.innerHTML = (lines.length
+      ? lines.map(l => `<div class="focus-item"><div class="focus-dot ok" style="background:var(--accent)"></div><div>${esc(l.replace(/^[-•\d+\.]\s*/,""))}</div></div>`).join("")
+      : `<div class="focus-item"><div style="white-space:pre-wrap;font-size:var(--fs-sm)">${esc(text)}</div></div>`)
+      + `<div style="text-align:right;margin-top:6px"><button class="btn-sm" onclick="clearAIFocus()">Yenile</button></div>`;
+  } catch(e) {
+    list.innerHTML = `<div class="focus-item" style="color:#dc2626">Gemini yanıt vermedi: ${esc(e.message)}</div>`;
+    delete list.dataset.aiLoaded;
+  }
+  btn.disabled = false;
+  btn.textContent = "✦ Gemini'ye sor";
+}
+
+function clearAIFocus() {
+  const list = document.getElementById("focus-list");
+  delete list.dataset.aiLoaded;
+  renderFocusFromPriorities();
+}
+
+// ════════════════════════════════════════════
+// IDEAS
+// ════════════════════════════════════════════
+
+// ─── TAG MANAGER ───
+function renderTagManager() {
+  const row = document.getElementById("tag-manager-row");
+  row.innerHTML = tags.map(t =>
+    `<div class="tag-pill ${activeTagFilter===t?'filter-active':''}" onclick="toggleTagFilter('${esc(t)}')">
+      ${esc(t)}
+      <span class="tag-pill-del" onclick="deleteTag(event,'${esc(t)}')" title="Etiketi sil">×</span>
+    </div>`
+  ).join("") +
+  `<input class="add-tag-input" id="add-tag-input" placeholder="+ Etiket ekle" onkeydown="addTagOnEnter(event)" />`;
+}
+
+function toggleTagFilter(tag) {
+  activeTagFilter = activeTagFilter === tag ? null : tag;
+  renderTagManager();
+  renderIdeas();
+}
+
+function deleteTag(e, tag) {
+  e.stopPropagation();
+  if (!confirm(`"${tag}" etiketini sil?`)) return;
+  tags = tags.filter(t => t !== tag);
+  if (activeTagFilter === tag) activeTagFilter = null;
+  ideas.forEach(i => { i.tags = (i.tags||[]).filter(t => t !== tag); });
+  scheduleSaveProjects();
+  renderTagManager();
+  renderIdeas();
+  renderNewIdeaTagPicker();
+}
+
+function addTagOnEnter(e) {
+  if (e.key !== "Enter") return;
+  const val = e.target.value.trim();
+  if (!val || tags.includes(val)) { e.target.value = ""; return; }
+  tags.push(val);
+  e.target.value = "";
+  scheduleSaveProjects();
+  renderTagManager();
+  renderNewIdeaTagPicker();
+}
+
+// ─── NEW IDEA TAG PICKER ───
+function renderNewIdeaTagPicker() {
+  const row = document.getElementById("new-idea-tags-row");
+  row.innerHTML = tags.map(t =>
+    `<div class="idea-tag ${newIdeaSelectedTags.includes(t)?'selected':''}" onclick="toggleNewIdeaTag('${esc(t)}')">${esc(t)}</div>`
+  ).join("");
+}
+
+function toggleNewIdeaTag(tag) {
+  if (newIdeaSelectedTags.includes(tag)) {
+    newIdeaSelectedTags = newIdeaSelectedTags.filter(t => t !== tag);
+  } else {
+    newIdeaSelectedTags.push(tag);
+  }
+  renderNewIdeaTagPicker();
+  updateIdeaSaveBtn();
+}
+
+function updateIdeaSaveBtn() {
+  const btn = document.getElementById("idea-save-btn");
+  if (!btn) return;
+  btn.disabled = newIdeaSelectedTags.length === 0;
+}
+
+// ─── URL FETCH PREVIEW ───
+let previewData = {};
+let fetchDebounce = null;
+
+function onUrlInput(val) {
+  clearTimeout(fetchDebounce);
+  const preview = document.getElementById("url-preview");
+  const status = document.getElementById("fetch-status");
+  if (!val.trim()) { preview.classList.add("hidden"); status.classList.add("hidden"); return; }
+  fetchDebounce = setTimeout(() => fetchUrlPreview(), 800);
+}
+
+// ── Platform helpers ──
+function ytVideoId(url) {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+function srcDomain(url) {
+  try { return new URL(url).hostname.replace("www.",""); } catch(e) { return ""; }
+}
+function faviconOf(url) {
+  const d = srcDomain(url);
+  return d ? "https://www.google.com/s2/favicons?domain=" + d + "&sz=32" : "";
+}
+async function fetchMeta(url) {
+  const proxies = [
+    "https://api.allorigins.win/get?url=",
+    "https://corsproxy.io/?"
+  ];
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy + encodeURIComponent(url), { signal: AbortSignal.timeout(7000) });
+      if (!res.ok) continue;
+      const json = await res.json().catch(() => null);
+      const html = json ? (json.contents || "") : "";
+      if (html.length < 100) continue;
+      const gt = (attrs) => {
+        for (const a of attrs) {
+          const m = html.match(new RegExp('<meta[^>]+(?:property|name)=["\']' + a + '["\'][^>]+content=["\']([^"\']{1,600})["\']','i'))
+                 || html.match(new RegExp('<meta[^>]+content=["\']([^"\']{1,600})["\'][^>]+(?:property|name)=["\']' + a + '["\']','i'));
+          if (m) return m[1].trim();
+        }
+        return "";
+      };
+      const tm = html.match(/<title[^>]*>([^<]{1,200})<\/title>/i);
+      return {
+        title: gt(["og:title","twitter:title"]) || (tm ? tm[1].trim() : ""),
+        desc:  gt(["og:description","twitter:description","description"]),
+        img:   gt(["og:image","twitter:image:src","twitter:image"]),
+        site:  gt(["og:site_name"]) || srcDomain(url),
+      };
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
+async function fetchUrlPreview() {
+  let url = document.getElementById("new-idea-url").value.trim();
+  if (!url) { showToast("Önce URL gir"); return; }
+  if (!url.startsWith("http")) url = "https://" + url;
+
+  const btn      = document.getElementById("fetch-btn");
+  const status   = document.getElementById("fetch-status");
+  const previewBox = document.getElementById("url-preview");
+  const imgEl    = document.getElementById("preview-img");
+  const favEl    = document.getElementById("preview-favicon");
+  const titleEl  = document.getElementById("preview-title");
+  const descEl   = document.getElementById("preview-desc");
+  const siteEl   = document.getElementById("preview-site");
+
+  if (btn) { btn.disabled = true; btn.textContent = "..."; }
+  if (status) { status.textContent = "Yükleniyor..."; status.classList.remove("hidden"); }
+  if (previewBox) previewBox.classList.add("hidden");
+  previewData = {};
+
+  let data = null;
+
+  // YouTube — direkt thumbnail, proxy gerekmez
+  const ytId = ytVideoId(url);
+  if (ytId) {
+    data = {
+      title: "", desc: "", site: "YouTube",
+      img: "https://img.youtube.com/vi/" + ytId + "/hqdefault.jpg",
+      imgFallback: "https://img.youtube.com/vi/" + ytId + "/mqdefault.jpg",
+      favicon: faviconOf(url), badge: "▶ YouTube"
+    };
+  }
+
+  // Twitter/X — oEmbed (key gerektirmez)
+  // NOT: X bu uç noktayı kısıtladı; bu blok çoğu zaman boş "Tweet" kartına düşer.
+  // Gerçek X önizlemesi artık ücretli X API anahtarı gerektirir.
+  if (!data && /twitter\.com|x\.com/.test(url)) {
+    try {
+      const r = await fetch("https://publish.twitter.com/oembed?url=" + encodeURIComponent(url) + "&maxwidth=500", { signal: AbortSignal.timeout(5000) });
+      if (r.ok) {
+        const d = await r.json();
+        const tm = (d.html||"").match(/<p[^>]*>(.+?)<\/p>/s);
+        const txt = tm ? tm[1].replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim() : "";
+        data = { title: d.author_name ? "@" + d.author_name : "Tweet", desc: txt, img: "", site: "Twitter / X", favicon: faviconOf(url), badge: "🐦 Tweet" };
+      }
+    } catch(e) {}
+    if (!data) data = { title: "Tweet", desc: "", img: "", site: "Twitter / X", favicon: faviconOf(url), badge: "🐦 Tweet" };
+  }
+
+  // Generic — proxy üzerinden og meta
+  if (!data) {
+    if (window.location.protocol === "file:") {
+      data = { title: srcDomain(url), desc: "(file:// ile açılıyorken önizleme yüklenemiyor)", img: "", site: srcDomain(url), favicon: faviconOf(url), badge: null };
+    } else {
+      const meta = await fetchMeta(url);
+      data = meta || { title: srcDomain(url), desc: "", img: "", site: srcDomain(url), favicon: faviconOf(url), badge: null };
+    }
+  }
+
+  previewData = { ...data, url };
+
+  // DOM güncelle
+  if (imgEl) {
+    if (data.img) {
+      imgEl.src = data.img;
+      imgEl.style.display = "block";
+      const fb = data.imgFallback;
+      imgEl.onerror = fb
+        ? () => { imgEl.src = fb; imgEl.onerror = () => { imgEl.style.display = "none"; }; }
+        : () => { imgEl.style.display = "none"; };
+    } else {
+      imgEl.style.display = "none";
+    }
+  }
+  if (favEl && data.favicon) { favEl.src = data.favicon; favEl.style.display = "inline"; }
+  if (titleEl) titleEl.textContent = data.title || data.site || "";
+  if (descEl)  descEl.textContent  = data.desc  || "";
+  if (siteEl)  siteEl.textContent  = data.badge || data.site || "";
+
+  // İçeriği otomatik doldur
+  usePreview();
+
+  if (status) status.classList.add("hidden");
+  if (previewBox) { previewBox.style.display = "block"; previewBox.classList.remove("hidden"); }
+  if (btn) { btn.disabled = false; btn.textContent = "↓ Fetch"; }
+}
+
+
+function usePreview() {
+  // artık buton yok, fetchUrlPreview bittikten sonra direkt çağrılır
+  const contentEl = document.getElementById("new-idea-content");
+  if (!contentEl) return;
+  if (previewData.desc) contentEl.value = previewData.desc;
+  if (previewData.title) contentEl.dataset.fetchedTitle = previewData.title || previewData.site || "";
+}
+
+// ─── GEMINI SUMMARIZE ───
+async function geminiSummarize() {
+  const url = document.getElementById("new-idea-url").value.trim();
+  const content = document.getElementById("new-idea-content").value.trim();
+  const sourceType = document.getElementById("new-idea-source").value;
+  const fetchedTitle = document.getElementById("new-idea-content").dataset.fetchedTitle || "";
+  const input = previewData.desc
+    ? `Başlık: ${previewData.title}\nAçıklama: ${previewData.desc}\nURL: ${url}`
+    : (content || url);
+  if (!input) { showToast("Önce URL fetch et veya içerik gir"); return; }
+
+  const btn = document.getElementById("gemini-summarize-btn");
+  const loading = document.getElementById("gemini-loading");
+  btn.disabled = true;
+  loading.classList.remove("hidden");
+
+  const prompt = `Aşağıdaki ${sourceType === "twitter" ? "tweet/Twitter bookmark" : "web içeriği"} için Türkçe olarak:
+1. Kısa bir başlık (max 8 kelime)
+2. 2-3 cümlelik özet
+üret. Yanıtı tam olarak şu JSON formatında ver, başka hiçbir şey yazma:
+{"title":"...","summary":"..."}
+
+İçerik: ${input}`;
+
+  try {
+    const res = await fetch("/.netlify/functions/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: GEMINI_MODEL, payload: { contents: [{ parts: [{ text: prompt }] }] } })
+    });
+    if (!res.ok) throw await parseGeminiError(res);
+    const data = await res.json();
+    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    text = text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(text);
+    document.getElementById("new-idea-content").value = parsed.summary || content;
+    document.getElementById("new-idea-content").dataset.aiTitle = parsed.title || fetchedTitle;
+    document.getElementById("new-idea-content").dataset.aiGenerated = "1";
+    showToast("Özetlendi ✓");
+  } catch(e) {
+    showToast("Gemini: " + e.message);
+  }
+  btn.disabled = false;
+  loading.classList.add("hidden");
+}
+
+// ─── SAVE NEW IDEA ───
+async function saveNewIdea() {
+  const url = document.getElementById("new-idea-url").value.trim();
+  const contentEl = document.getElementById("new-idea-content");
+  const content = contentEl.value.trim();
+  const sourceType = document.getElementById("new-idea-source").value;
+  const aiTitle = contentEl.dataset.aiTitle || contentEl.dataset.fetchedTitle || "";
+  const aiGenerated = contentEl.dataset.aiGenerated === "1";
+
+  if (!content && !url) { showToast("İçerik veya URL gir"); return; }
+
+  const idea = {
+    id: Date.now(),
+    title: aiTitle || (url ? new URL(url.startsWith("http") ? url : "https://"+url).hostname : content.substring(0,40)),
+    summary: content,
+    tags: [...newIdeaSelectedTags],
+    source_type: sourceType,
+    url: url,
+    content: content,
+    image: previewData.img || "",
+    site: previewData.site || "",
+    created_at: new Date().toISOString(),
+    ai_generated: aiGenerated
+  };
+
+  ideas.unshift(idea);
+  renderIdeas();
+
+  // Reset form
+  document.getElementById("new-idea-url").value = "";
+  contentEl.value = "";
+  delete contentEl.dataset.aiTitle;
+  delete contentEl.dataset.aiGenerated;
+  delete contentEl.dataset.fetchedTitle;
+  previewData = {};
+  document.getElementById("url-preview").classList.add("hidden");
+  document.getElementById("fetch-status").classList.add("hidden");
+  newIdeaSelectedTags = [];
+  renderNewIdeaTagPicker();
+  updateIdeaSaveBtn();
+
+  await pushIdea(idea);
+}
+
+// ─── RENDER IDEAS ───
+function renderIdeas() {
+  const search = (document.getElementById("idea-search")?.value || "").toLowerCase();
+  const grid = document.getElementById("ideas-grid");
+  const countEl = document.getElementById("ideas-count");
+
+  let filtered = ideas;
+  if (activeTagFilter) filtered = filtered.filter(i => (i.tags||[]).includes(activeTagFilter));
+  if (search) filtered = filtered.filter(i =>
+    (i.title||"").toLowerCase().includes(search) ||
+    (i.summary||"").toLowerCase().includes(search) ||
+    (i.content||"").toLowerCase().includes(search)
+  );
+
+  countEl.textContent = filtered.length + " fikir";
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">Henüz fikir yok — yukarıdan ekle</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(idea => {
+    const tagHtml = (idea.tags||[]).map(t =>
+      `<span class="idea-tag ${activeTagFilter===t?'idea-tag-active':''}" onclick="toggleTagFilter('${esc(t)}')">${esc(t)}</span>`
+    ).join("");
+    const dateStr = idea.created_at ? new Date(idea.created_at).toLocaleDateString("tr-TR",{day:"numeric",month:"short",year:"numeric"}) : "";
+    const domain  = idea.url ? (() => { try { return new URL(idea.url).hostname.replace("www.",""); } catch(e) { return ""; } })() : "";
+    const displaySite = idea.site || domain;
+    const isYT = /youtube\.com|youtu\.be/.test(idea.url||"");
+    const isTW = /twitter\.com|x\.com/.test(idea.url||"");
+    const thumb = idea.image || "";
+    const favicon = domain ? "https://www.google.com/s2/favicons?domain=" + domain + "&sz=32" : "";
+
+    const thumbHtml = thumb ? `
+      <div class="idea-card-thumb-wrap">
+        <img class="idea-card-thumb" src="${esc(thumb)}" alt="" loading="lazy"
+          onerror="this.closest('.idea-card-thumb-wrap').style.display='none'">
+        ${isYT ? '<span class="idea-card-thumb-badge">▶ YouTube</span>' : isTW ? '<span class="idea-card-thumb-badge">🐦 Tweet</span>' : ''}
+      </div>` : "";
+
+    const bodyClass = thumb ? "idea-card-body" : "idea-card-no-thumb";
+
+    return `
+    <div class="idea-card" id="idea-${idea.id}">
+      <button class="idea-del" onclick="deleteIdea(${idea.id})" style="top:${thumb ? '168px' : '10px'}">×</button>
+      ${thumbHtml}
+      <div class="${bodyClass}">
+        <div class="idea-source">
+          ${favicon ? `<img src="${favicon}" style="width:13px;height:13px;border-radius:2px;flex-shrink:0;" onerror="this.style.display='none'">` : `<span class="idea-source-icon">${SOURCE_ICONS[idea.source_type]||"🔗"}</span>`}
+          ${idea.url ? `<a class="idea-source-url" href="${esc(idea.url)}" target="_blank" rel="noopener">${esc(displaySite||idea.url.substring(0,40))}</a>` : ""}
+        </div>
+        <div class="idea-title" contenteditable="true"
+          onblur="saveIdeaField(${idea.id},'title',this.innerText)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+        >${esc(idea.title)}</div>
+        <div class="idea-summary" contenteditable="true"
+          onblur="saveIdeaField(${idea.id},'summary',this.innerText)"
+        >${esc(idea.summary)}</div>
+        ${idea.ai_generated ? `<div class="idea-ai-badge">✦ Gemini özeti</div>` : ""}
+        <div class="idea-tags">${tagHtml}</div>
+        <div class="idea-date">${dateStr}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function saveIdeaField(id, field, value) {
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  idea[field] = value.trim();
+  clearTimeout(ideasSaveDebounce[id]);
+  setSyncStatus("loading","Kaydediliyor...");
+  ideasSaveDebounce[id] = setTimeout(() => pushIdea(idea), 1200);
+}
+
+function addTagToIdea(id, tag) {
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  if (!(idea.tags||[]).includes(tag)) {
+    idea.tags = [...(idea.tags||[]), tag];
+    pushIdea(idea);
+    renderIdeas();
+  }
+}
+
+async function deleteIdea(id) {
+  if (!confirm("Bu fikri silmek istediğine emin misin?")) return;
+  ideas = ideas.filter(i => i.id !== id);
+  renderIdeas();
+  await deleteIdeaFromSupabase(id);
+}
+
+// ─── TOAST ───
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2000);
+}
+
+// ─── DATE ───
+function setDate() {
+  document.getElementById("date-badge").textContent =
+    new Date().toLocaleDateString("tr-TR",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+}
+
+// ════════════════════════════════════════════
+// BLOG FİKİRLERİ
+// ════════════════════════════════════════════
+
+const BLOG_PILLARS_DEFAULT = [
+  { id: "P1", label: "Yönetici Perspektifi", color: "#8C2D2D" },
+  { id: "P2", label: "Kurucunun Günlüğü",    color: "#1F6F78" },
+  { id: "P3", label: "Filtresiz Pazarlama",  color: "#9A6B1F" },
+  { id: "P4", label: "Kavram ve Düşünceler", color: "#3A3F7A" },
+  { id: "P5", label: "Kariyer ve Kültür",    color: "#3E6B4A" },
+];
+
+const PILLAR_META = {
+  P1: { label: "Yönetici Perspektifi", color: "#8C2D2D" },
+  P2: { label: "Kurucunun Günlüğü",    color: "#1F6F78" },
+  P3: { label: "Filtresiz Pazarlama",  color: "#9A6B1F" },
+  P4: { label: "Kavram ve Düşünceler", color: "#3A3F7A" },
+  P5: { label: "Kariyer ve Kültür",    color: "#3E6B4A" },
+};
+
+function normalizePillars(list) {
+  return (list && list.length ? list : BLOG_PILLARS_DEFAULT).map(p =>
+    PILLAR_META[p.id] ? { ...p, ...PILLAR_META[p.id] } : p);
+}
+
+let blogPillars = normalizePillars([...BLOG_PILLARS_DEFAULT]);
+
+const BLOG_TAGS_DEFAULT = ["TR", "EN", "Substack", "LinkedIn", "Medium", "YouTube", "Seri", "Evergreen", "Provokasyon", "Retrospektif"];
+
+let blogIdeas = [];
+let blogNewPillar = "P1";
+let blogNewTags = [];
+let blogPillarFilter = "ALL";
+let blogTags = [...BLOG_TAGS_DEFAULT];
+let blogExpandedIds = new Set();
+let blogSaveDebounce = {};
+
+// ─── LOAD / SAVE blog ideas (localStorage) ───
+function loadBlogIdeas() {
+  try {
+    const s = localStorage.getItem("eren_wb_blog");
+    if (s) {
+      const d = JSON.parse(s);
+      blogIdeas = d.ideas || [];
+      blogTags = d.tags || [...BLOG_TAGS_DEFAULT];
+      blogPillars = d.pillars && d.pillars.length ? normalizePillars(d.pillars) : [...BLOG_PILLARS_DEFAULT];
+    }
+  } catch(e) {}
+}
+
+function saveBlogLocal() {
+  try { localStorage.setItem("eren_wb_blog", JSON.stringify({ ideas: blogIdeas, tags: blogTags, pillars: blogPillars })); } catch(e) {}
+}
+
+// ─── PILLAR PICKER (new idea form) ───
+function renderBlogPillarPicker() {
+  const el = document.getElementById("blog-pillar-picker");
+  if (!el) return;
+  el.innerHTML = blogPillars.map(p =>
+    `<button class="pillar-btn ${blogNewPillar === p.id ? 'active' : ''}"
+      style="border-color:${blogNewPillar === p.id ? p.color : 'transparent'};${blogNewPillar === p.id ? 'color:' + p.color + ';background:' + p.color + '18;font-weight:600;' : ''}"
+      onclick="selectBlogPillar('${p.id}')">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${p.color};margin-right:5px;vertical-align:middle;flex-shrink:0"></span>${esc(p.id)}${p.label ? ' — ' + esc(p.label) : ''}
+      </button>`
+  ).join("");
+}
+
+function selectBlogPillar(id) {
+  blogNewPillar = id;
+  renderBlogPillarPicker();
+}
+
+// ─── TAG PICKER (new idea form) ───
+function renderBlogTagPicker() {
+  const el = document.getElementById("blog-new-tag-picker");
+  if (!el) return;
+  el.innerHTML = blogTags.map(t =>
+    `<button class="pillar-btn ${blogNewTags.includes(t) ? 'active' : ''}"
+      style="${blogNewTags.includes(t) ? 'border-color:var(--accent-border);color:var(--accent);background:var(--accent-bg)' : ''}"
+      onclick="toggleBlogNewTag('${esc(t)}')">${esc(t)}</button>`
+  ).join("") +
+  `<input style="padding:3px 8px;border:1px dashed var(--border2);border-radius:20px;font-size:var(--fs-sm);color:var(--text);background:transparent;font-family:var(--font);outline:none;width:90px;" placeholder="+ Etiket" onkeydown="addBlogTagOnEnter(event)" />`;
+}
+
+function toggleBlogNewTag(tag) {
+  blogNewTags = blogNewTags.includes(tag) ? blogNewTags.filter(t => t !== tag) : [...blogNewTags, tag];
+  renderBlogTagPicker();
+}
+
+function addBlogTagOnEnter(e) {
+  if (e.key !== "Enter") return;
+  const val = e.target.value.trim();
+  if (!val) return;
+  if (!blogTags.includes(val)) { blogTags.push(val); saveBlogLocal(); scheduleSaveProjects(); }
+  if (!blogNewTags.includes(val)) blogNewTags.push(val);
+  e.target.value = "";
+  renderBlogTagPicker();
+}
+
+// ─── PILLAR FILTERS (list side) ───
+function renderBlogPillarFilters() {
+  const el = document.getElementById("blog-pillar-filters");
+  if (!el) return;
+  el.innerHTML = [{ id: "ALL", label: "Tümü", color: "var(--accent)" }, ...blogPillars].map(p =>
+    `<button class="chip ${blogPillarFilter === p.id ? 'active' : ''}"
+      onclick="setBlogPillarFilter('${p.id}')">${p.id === "ALL" ? "Tümü" : esc(p.id) + (p.label ? ' — ' + esc(p.label) : '')}</button>`
+  ).join("");
+}
+
+function setBlogPillarFilter(id) {
+  blogPillarFilter = id;
+  renderBlogPillarFilters();
+  renderBlogList();
+}
+
+// ─── RENDER LIST ───
+let blogShowArchive = false;
+function renderBlogList() {
+  const list = document.getElementById("blog-list");
+  const countEl = document.getElementById("blog-count");
+  if (!list) return;
+
+  const pool = blogShowArchive
+    ? blogIdeas.filter(i => i.archived)
+    : blogIdeas.filter(i => !i.archived);
+
+  const filtered = pool.filter(i => blogPillarFilter === "ALL" || i.pillar === blogPillarFilter);
+  if (countEl) countEl.textContent = filtered.length + (blogShowArchive ? " arşivlenmiş" : " fikir");
+
+  if (filtered.length === 0) {
+    list.innerHTML = "<div class=\"empty-state\">" + (blogShowArchive ? "Arşiv boş" : "Henüz fikir yok — soldan ekle") + "</div>";
+    return;
+  }
+
+  // Use string concat (no template literals with nested backticks) to avoid quoting bugs
+  list.innerHTML = "";
+  filtered.forEach(function(idea) {
+    const pillar = blogPillars.find(function(p){ return p.id === idea.pillar; }) || blogPillars[0] || { id: idea.pillar, label: "", color: "#888" };
+    const isExp = blogExpandedIds.has(String(idea.id));
+    const sid = String(idea.id);
+
+    const tagHtml = (idea.tags || []).map(function(t){ return "<span class=\"blog-card-tag on\">" + esc(t) + "</span>"; }).join("");
+    const aiHtml = idea.aiResult
+      ? "<div class=\"blog-ai-result\" style=\"margin:0 12px 10px;\"><div class=\"blog-ai-result-label\">&#10022; Gemini Önerisi</div><div style=\"white-space:pre-wrap\">" + esc(idea.aiResult) + "</div></div>"
+      : "";
+    const dateStr = idea.createdAt ? new Date(idea.createdAt).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" }) : "";
+    const pillarBadge = esc(pillar.id) + (pillar.label ? " \u2014 " + esc(pillar.label) : "");
+    const archiveBtn = idea.archived
+      ? "<button class=\"btn-sm\" data-action=\"unarchive\" data-id=\"" + sid + "\" style=\"font-size:11px;padding:1px 8px;flex-shrink:0\">\u21a9 Geri al</button>"
+      : "";
+    const archiveBlogBtn = !idea.archived
+      ? "<button class=\"btn-sm\" data-action=\"archive-blog\" data-id=\"" + sid + "\" style=\"font-size:11px;padding:2px 8px;color:var(--muted)\">\uD83D\uDCE6 Ar\u015fivle</button>"
+      : "";
+
+    const html =
+      "<div class=\"blog-card" + (isExp ? " expanded" : "") + (idea.archived ? " archived" : "") + "\" id=\"blog-card-" + sid + "\" data-id=\"" + sid + "\">" +
+        "<div class=\"blog-card-header\" data-action=\"toggle\" data-id=\"" + sid + "\">" +
+          "<div class=\"blog-pillar-dot\" style=\"background:" + pillar.color + "\"></div>" +
+          "<div class=\"blog-card-title-text\">" + esc(idea.title || "(başlıksız)") + "</div>" +
+          "<span class=\"blog-pillar-badge\" style=\"background:" + pillar.color + "18;color:" + pillar.color + "\">" + pillarBadge + "</span>" +
+          archiveBtn +
+          "<button class=\"blog-card-del\" data-action=\"delete\" data-id=\"" + sid + "\">\u00d7</button>" +
+          "<span class=\"blog-card-chevron\">\u25bc</span>" +
+        "</div>" +
+        "<div class=\"blog-card-body\">" +
+          "<div class=\"blog-card-draft\">Draft Notlar\u0131</div>" +
+          "<textarea class=\"blog-card-textarea\" data-field=\"draft\" data-id=\"" + sid + "\" placeholder=\"Ana arg\u00fcmanlar, referanslar, yap\u0131...\">" + esc(idea.draft || "") + "</textarea>" +
+          "<div class=\"blog-card-tags\">" + tagHtml + "</div>" +
+          aiHtml +
+          "<div class=\"blog-card-footer\">" +
+            "<span class=\"blog-card-date\">" + dateStr + "</span>" +
+            "<div style=\"display:flex;gap:6px;align-items:center\">" +
+              archiveBlogBtn +
+              "<button class=\"blog-ai-btn\" data-action=\"ai\" data-id=\"" + sid + "\" style=\"padding:4px 10px;font-size:var(--fs-sm)\">&#10022; Gemini</button>" +
+            "</div>" +
+          "</div>" +
+        "</div>" +
+      "</div>";
+    list.innerHTML += html;
+  });
+}
+
+// Single delegated event listener on blog-list — no inline handlers needed
+function initBlogListEvents() {
+  const list = document.getElementById("blog-list");
+  if (!list || list._delegated) return;
+  list._delegated = true;
+
+  list.addEventListener("click", function(e) {
+    // Delete — check FIRST before toggle, button is inside header
+    const del = e.target.closest("[data-action='delete']");
+    if (del) {
+      e.stopPropagation();
+      const sid = del.dataset.id;
+      if (!confirm("Bu fikri silmek istediğine emin misin?\nBu işlem geri alınamaz.")) return;
+      const idea = blogIdeas.find(i => String(i.id) === sid);
+      if (!idea) return;
+      blogIdeas = blogIdeas.filter(i => String(i.id) !== sid);
+      blogExpandedIds.delete(sid);
+      saveBlogLocal();
+      deleteBlogIdeaFromSupabase(idea.id);
+      renderBlogList();
+      initBlogListEvents();
+      return;
+    }
+
+    // Archive blog idea
+    const arch = e.target.closest("[data-action='archive-blog']");
+    if (arch) { e.stopPropagation(); archiveBlogIdea(arch.dataset.id); return; }
+
+    // Unarchive blog idea
+    const unarch = e.target.closest("[data-action='unarchive']");
+    if (unarch) { e.stopPropagation(); unarchiveBlogIdea(unarch.dataset.id); return; }
+
+    // Gemini AI
+    const ai = e.target.closest("[data-action='ai']");
+    if (ai) { e.stopPropagation(); blogCardAI(e, ai.dataset.id); return; }
+
+    // Toggle (header click) — LAST, so buttons inside header get priority above
+    const header = e.target.closest("[data-action='toggle']");
+    if (header) { toggleBlogCard(header.dataset.id); return; }
+  });
+
+  list.addEventListener("blur", function(e) {
+    const ta = e.target.closest("textarea[data-field]");
+    if (ta) { saveBlogField(ta.dataset.id, ta.dataset.field, ta.value); }
+  }, true);
+}
+
+function archiveBlogIdea(id) {
+  const sid = String(id);
+  const idea = blogIdeas.find(i => String(i.id) === sid);
+  if (!idea) return;
+  idea.archived = true;
+  idea.archivedAt = new Date().toISOString();
+  saveBlogLocal();
+  pushBlogIdea(idea);
+  renderBlogList();
+  updateBlogArchiveBtn();
+  showToast("Arşivlendi");
+}
+
+function unarchiveBlogIdea(id) {
+  const sid = String(id);
+  const idea = blogIdeas.find(i => String(i.id) === sid);
+  if (!idea) return;
+  idea.archived = false;
+  delete idea.archivedAt;
+  saveBlogLocal();
+  pushBlogIdea(idea);
+  renderBlogList();
+  updateBlogArchiveBtn();
+  showToast("Arşivden çıkarıldı");
+}
+
+function toggleBlogArchiveView() {
+  blogShowArchive = !blogShowArchive;
+  blogPillarFilter = "ALL";
+  renderBlogPillarFilters();
+  renderBlogList();
+  updateBlogArchiveBtn();
+}
+
+function updateBlogArchiveBtn() {
+  const btn = document.getElementById("blog-archive-toggle-btn");
+  const archivedCount = blogIdeas.filter(i => i.archived).length;
+  if (btn) {
+    btn.textContent = blogShowArchive ? "← Fikirlere dön" : `📦 Arşiv${archivedCount > 0 ? " (" + archivedCount + ")" : ""}`;
+    btn.style.color = blogShowArchive ? "var(--accent)" : "var(--muted)";
+  }
+}
+
+function toggleBlogCard(id) {
+  const sid = String(id);
+  if (blogExpandedIds.has(sid)) blogExpandedIds.delete(sid);
+  else blogExpandedIds.add(sid);
+  renderBlogList();
+}
+
+function deleteBlogIdea(e, id) {
+  e.stopPropagation();
+  if (!confirm("Bu fikri silmek istediğine emin misin?")) return;
+  const sid = String(id);
+  blogIdeas = blogIdeas.filter(i => String(i.id) !== sid);
+  blogExpandedIds.delete(sid);
+  saveBlogLocal();
+  deleteBlogIdeaFromSupabase(id);
+  renderBlogList();
+}
+
+function saveBlogField(id, field, value) {
+  const sid = String(id);
+  const idea = blogIdeas.find(i => String(i.id) === sid);
+  if (!idea) return;
+  idea[field] = value.trim();
+  clearTimeout(blogSaveDebounce[sid]);
+  blogSaveDebounce[sid] = setTimeout(() => { saveBlogLocal(); pushBlogIdea(idea); }, 1200);
+}
+
+// ─── SAVE NEW IDEA ───
+function saveBlogIdea() {
+  const titleEl = document.getElementById("blog-new-title-input");
+  const draftEl = document.getElementById("blog-new-draft");
+  const title = titleEl ? titleEl.value.trim() : "";
+  if (!title) { showToast("Başlık gir"); titleEl && titleEl.focus(); return; }
+
+  const idea = {
+    id: Date.now(),
+    title,
+    pillar: blogNewPillar,
+    draft: draftEl ? draftEl.value.trim() : "",
+    tags: [...blogNewTags],
+    createdAt: new Date().toISOString(),
+    aiResult: null
+  };
+
+  blogIdeas.unshift(idea);
+  saveBlogLocal();
+  pushBlogIdea(idea);
+
+  // Reset form
+  if (titleEl) titleEl.value = "";
+  if (draftEl) draftEl.value = "";
+  blogNewTags = [];
+  blogNewPillar = "P1";
+
+  renderBlogPillarPicker();
+  renderBlogTagPicker();
+  renderBlogList();
+  showToast("Fikir eklendi");
+}
+
+// ─── GEMINI AI CURATION (new idea form) ───
+async function blogAICuration() {
+  const titleEl = document.getElementById("blog-new-title-input");
+  const draftEl = document.getElementById("blog-new-draft");
+  const title = titleEl ? titleEl.value.trim() : "";
+  const draft = draftEl ? draftEl.value.trim() : "";
+  if (!title && !draft) { showToast("Önce bir başlık veya not gir"); return; }
+
+  const btn = document.getElementById("blog-ai-btn");
+  const loading = document.getElementById("blog-ai-loading");
+  const preview = document.getElementById("blog-ai-preview");
+  const previewText = document.getElementById("blog-ai-preview-text");
+  btn.disabled = true;
+  loading.classList.remove("hidden");
+  preview.classList.add("hidden");
+
+  const pillar = blogPillars.find(p => p.id === blogNewPillar) || blogPillars[0];
+  const prompt = `Sen Eren Kumcuoğlu'nun içerik danışmanısın. Eren anti-corporate, "been there got the scars" tonu olan, İstanbul'da çoklu girişim yürüten bir C-level girişimci.
+
+İçerik pillar'ı: ${pillar.id} — ${pillar.label}
+Fikir başlığı: ${title || "(belirtilmemiş)"}
+Draft notlar: ${draft || "(yok)"}
+
+Şunları Türkçe olarak üret (kısa, aksiyon odaklı):
+1. Güçlü bir açılış hook'u (1 cümle, provokasyon veya anekdot)
+2. Yazının ana argümanı (1-2 cümle)
+3. Önerilen format (uzunluk ve platform)
+
+Klişe LinkedIn dilinden kaçın. Samimi ve dobra olsun.`;
+
+  try {
+    const res = await fetch("/.netlify/functions/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: GEMINI_MODEL, payload: { contents: [{ parts: [{ text: prompt }] }] } })
+    });
+    if (!res.ok) throw await parseGeminiError(res);
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (!text) throw new Error("Boş yanıt");
+    previewText.textContent = text;
+    preview.classList.remove("hidden");
+  } catch(e) {
+    showToast("Gemini: " + e.message);
+  }
+
+  btn.disabled = false;
+  loading.classList.add("hidden");
+}
+
+// ─── GEMINI AI CURATION (card level) ───
+async function blogCardAI(e, id) {
+  e.stopPropagation();
+  const sid = String(id);
+  const idea = blogIdeas.find(i => String(i.id) === sid);
+  if (!idea) return;
+
+  const btn = document.getElementById("blog-card-ai-btn-" + id);
+  if (btn) { btn.disabled = true; btn.textContent = "..."; }
+
+  const pillar = blogPillars.find(p => p.id === idea.pillar) || blogPillars[0];
+  const prompt = `Sen Eren Kumcuoğlu'nun içerik danışmanısın. Eren anti-corporate, "been there got the scars" tonu olan girişimci.
+
+İçerik pillar'ı: ${pillar?.id} — ${pillar?.label}
+Fikir başlığı: ${idea.title}
+Draft notlar: ${idea.draft || "(yok)"}
+
+Şunları Türkçe olarak üret:
+1. Güçlü bir açılış hook'u (1 cümle, provokasyon veya anekdot)  
+2. Yazının ana argümanı (1-2 cümle)
+3. Önerilen format
+
+Klişe LinkedIn dilinden kaçın.`;
+
+  try {
+    const res = await fetch("/.netlify/functions/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: GEMINI_MODEL, payload: { contents: [{ parts: [{ text: prompt }] }] } })
+    });
+    if (!res.ok) throw await parseGeminiError(res);
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    idea.aiResult = text;
+    saveBlogLocal();
+    pushBlogIdea(idea);
+    blogExpandedIds.add(sid);
+    renderBlogList();
+    initBlogListEvents();
+  } catch(e) {
+    showToast("Gemini: " + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = "✦ Gemini"; }
+  }
+}
+
+
+// ─── PILLAR MANAGER ───
+const PILLAR_COLORS = ["#dc2626","#2563eb","#0891b2","#7c3aed","#ea580c","#16a34a","#d97706","#be185d","#4338ca","#0f766e","#9333ea","#475569"];
+let colorPopoverTarget = null; // { pillarId, dotEl }
+
+function togglePillarManager() {
+  const el = document.getElementById("pillar-manager");
+  if (el) el.classList.toggle("open");
+}
+
+function renderPillarRows() {
+  const el = document.getElementById("pillar-rows");
+  if (!el) return;
+  el.innerHTML = blogPillars.map((p, idx) => `
+    <div class="pillar-row" id="pillar-row-${idx}">
+      <div class="pillar-color-dot" style="background:${p.color}"
+        onclick="openColorPopover(event,${idx})" title="Renk seç"></div>
+      <input class="pillar-id-input" value="${esc(p.id)}"
+        onblur="updatePillarId(${idx},this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()"
+        title="Pillar kodu" />
+      <input class="pillar-label-input" value="${esc(p.label)}"
+        onblur="updatePillarLabel(${idx},this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()"
+        placeholder="Pillar adı..." />
+      <button class="pillar-del-btn" onclick="deleteBlogPillar(${idx})" title="Sil">×</button>
+    </div>`
+  ).join("");
+}
+
+function updatePillarId(idx, val) {
+  val = val.trim();
+  if (!val) return;
+  const old = blogPillars[idx].id;
+  blogPillars[idx].id = val;
+  // update all ideas referencing old id
+  blogIdeas.forEach(i => { if (i.pillar === old) i.pillar = val; });
+  if (blogNewPillar === old) blogNewPillar = val;
+  saveBlogLocal();
+  scheduleSaveProjects();
+  renderBlogPillarPicker();
+  renderBlogPillarFilters();
+  renderBlogList();
+}
+
+function updatePillarLabel(idx, val) {
+  blogPillars[idx].label = val.trim();
+  saveBlogLocal();
+  scheduleSaveProjects();
+  renderBlogPillarPicker();
+  renderBlogPillarFilters();
+  renderBlogList();
+}
+
+function deleteBlogPillar(idx) {
+  if (blogPillars.length <= 1) { showToast("En az 1 pillar gerekli"); return; }
+  if (!confirm("Bu pillar'ı silmek istediğine emin misin?")) return;
+  const id = blogPillars[idx].id;
+  blogPillars.splice(idx, 1);
+  if (blogNewPillar === id) blogNewPillar = blogPillars[0].id;
+  if (blogPillarFilter === id) { blogPillarFilter = "ALL"; }
+  saveBlogLocal();
+  scheduleSaveProjects();
+  renderPillarRows();
+  renderBlogPillarPicker();
+  renderBlogPillarFilters();
+  renderBlogList();
+}
+
+function addBlogPillar() {
+  const input = document.getElementById("add-pillar-label");
+  const label = input ? input.value.trim() : "";
+  if (!label) { if (input) input.focus(); return; }
+  const newIdx = blogPillars.length + 1;
+  const id = "P" + newIdx;
+  const color = PILLAR_COLORS[blogPillars.length % PILLAR_COLORS.length];
+  blogPillars.push({ id, label, color });
+  if (input) input.value = "";
+  saveBlogLocal();
+  scheduleSaveProjects();
+  renderPillarRows();
+  renderBlogPillarPicker();
+  renderBlogPillarFilters();
+  showToast("Pillar eklendi");
+}
+
+function openColorPopover(e, idx) {
+  e.stopPropagation();
+  document.querySelectorAll(".color-popover").forEach(el => el.remove());
+  const dot = e.currentTarget;
+  const popover = document.createElement("div");
+  popover.className = "color-popover";
+  popover.style.position = "absolute";
+  PILLAR_COLORS.forEach(c => {
+    const sw = document.createElement("div");
+    sw.className = "color-swatch";
+    sw.style.background = c;
+    if (blogPillars[idx].color === c) sw.style.borderColor = "var(--text)";
+    sw.onclick = (ev) => {
+      ev.stopPropagation();
+      blogPillars[idx].color = c;
+      saveBlogLocal();
+      scheduleSaveProjects();
+      renderPillarRows();
+      renderBlogPillarPicker();
+      renderBlogPillarFilters();
+      renderBlogList();
+      popover.remove();
+    };
+    popover.appendChild(sw);
+  });
+  dot.style.position = "relative";
+  dot.appendChild(popover);
+  const close = (ev) => { if (!popover.contains(ev.target) && ev.target !== dot) { popover.remove(); document.removeEventListener("click", close); } };
+  setTimeout(() => document.addEventListener("click", close), 0);
+}
+
+// ─── CONTENT PAGE ───
+let contentDraftResult = null;
+let contentSelectedPillar = "P1";
+let contentMode = "file";
+
+// Recorder state
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingActive = false;
+let recordTimerInterval = null;
+let recordStartTime = 0;
+let recState = "idle"; // idle | recording | paused
+let recStream = null;
+let recSegments = []; // {id, blob, mimeType, duration, createdAt}
+
+function switchContentMode(mode) {
+  contentMode = mode;
+  document.querySelectorAll(".content-mode-panel").forEach(el => el.style.display = "none");
+  document.getElementById("content-panel-" + mode).style.display = "block";
+}
+
+function renderContentPillarPicker() {
+  const el = document.getElementById("content-pillar-picker");
+  if (!el) return;
+  el.innerHTML = blogPillars.map(p =>
+    `<button class="pillar-btn${p.id==='P1'?' active':''}"
+      style="border-color:${p.id==='P1' ? p.color : 'transparent'};${p.id==='P1' ? 'color:' + p.color + ';background:' + p.color + '18;font-weight:600;' : ''}"
+      onclick="selectContentPillar('${p.id}')" data-id="${p.id}">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${p.color};margin-right:5px;vertical-align:middle;flex-shrink:0"></span>${esc(p.label)}
+      </button>`
+  ).join("");
+}
+
+function selectContentPillar(id) {
+  contentSelectedPillar = id;
+  document.querySelectorAll("#content-pillar-picker .pillar-btn").forEach(b => {
+    const match = b.dataset.id === id;
+    b.classList.toggle("active", match);
+    const p = blogPillars.find(x => x.id === id);
+    if (p && match) {
+      b.style.borderColor = p.color;
+      b.style.color = p.color;
+      b.style.background = p.color + "18";
+      b.style.fontWeight = "600";
+    } else {
+      b.style.borderColor = "transparent";
+      b.style.color = "";
+      b.style.background = "";
+      b.style.fontWeight = "";
+    }
+  });
+}
+
+// ─── RECORDER ───
+function showContentRecNote(msg) {
+  const el = document.getElementById("record-status");
+  if (el) el.textContent = msg;
+}
+
+const AUDIO_MIME_MAP = {
+  m4a: "audio/mp4", aac: "audio/aac", mp3: "audio/mpeg",
+  wav: "audio/wav", ogg: "audio/ogg", flac: "audio/flac",
+  webm: "audio/webm",
+};
+function mimeForFile(file) {
+  if (file.type && file.type !== "application/octet-stream") return file.type;
+  const ext = file.name.split(".").pop().toLowerCase();
+  return AUDIO_MIME_MAP[ext] || "audio/webm";
+}
+
+// ─── IndexedDB ───
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("ewb_recorder", 2);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains("segments"))
+        db.createObjectStore("segments", { keyPath: "id", autoIncrement: true });
+      if (!db.objectStoreNames.contains("drafts"))
+        db.createObjectStore("drafts", { keyPath: "id", autoIncrement: true });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function loadLocalSegments() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("segments", "readonly");
+    const store = tx.objectStore("segments");
+    const all = await new Promise((r) => { const q = store.getAll(); q.onsuccess = () => r(q.result); });
+    recSegments = all || [];
+  } catch (e) {
+    console.warn("IndexedDB yüklenemedi:", e);
+    recSegments = [];
+  }
+  renderSegments();
+}
+
+async function saveSegmentToDB(seg) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("segments", "readwrite");
+    const store = tx.objectStore("segments");
+    return await new Promise((r) => { const q = store.add(seg); q.onsuccess = () => r(q.result); });
+  } catch (e) { console.warn("Segment kaydedilemedi:", e); }
+}
+
+async function deleteSegmentFromDB(id) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("segments", "readwrite");
+    const store = tx.objectStore("segments");
+    await new Promise((r) => { const q = store.delete(id); q.onsuccess = () => r(); });
+  } catch (e) { console.warn("Segment silinemedi:", e); }
+}
+
+// ─── Draft persistence (IndexedDB) ───
+let savedDrafts = [];
+
+async function loadSavedDrafts() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("drafts", "readonly");
+    const store = tx.objectStore("drafts");
+    const all = await new Promise((r) => { const q = store.getAll(); q.onsuccess = () => r(q.result); });
+    savedDrafts = (all || []).sort((a, b) => b.createdAt - a.createdAt);
+  } catch (e) { console.warn("Draftlar yüklenemedi:", e); savedDrafts = []; }
+  renderSavedDrafts();
+}
+
+async function saveDraftToDB(draft) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("drafts", "readwrite");
+    const store = tx.objectStore("drafts");
+    return await new Promise((r) => { const q = store.add(draft); q.onsuccess = () => r(q.result); });
+  } catch (e) { console.warn("Draft kaydedilemedi:", e); }
+}
+
+async function deleteDraftFromDB(id) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("drafts", "readwrite");
+    const store = tx.objectStore("drafts");
+    await new Promise((r) => { const q = store.delete(id); q.onsuccess = () => r(); });
+    savedDrafts = savedDrafts.filter(d => d.id !== id);
+    renderSavedDrafts();
+  } catch (e) { console.warn("Draft silinemedi:", e); }
+}
+
+async function updateDraftInDB(draft) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("drafts", "readwrite");
+    const store = tx.objectStore("drafts");
+    await new Promise((r) => { const q = store.put(draft); q.onsuccess = () => r(); });
+  } catch (e) { console.warn("Draft güncellenemedi:", e); }
+}
+
+function renderSavedDrafts() {
+  const el = document.getElementById("saved-drafts");
+  if (!el) return;
+  if (savedDrafts.length === 0) { el.style.display = "none"; return; }
+  el.style.display = "block";
+  el.innerHTML = "<div style='margin-bottom:6px;font-weight:600;color:var(--text)'>Geçmiş Taslaklar</div>" +
+    savedDrafts.slice(0, 10).map(d =>
+      `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:var(--fs-sm)">
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--accent)"
+          onclick="loadDraftIntoPreview(${d.id})">${esc(d.title || "Taslak #" + d.id)}</span>
+        <span style="color:var(--dim);font-size:11px">${new Date(d.createdAt).toLocaleDateString("tr-TR", {day:"numeric",month:"short"})}</span>
+        <span style="cursor:pointer;color:var(--muted);font-size:13px" onclick="deleteDraftFromDB(${d.id});renderSavedDrafts()">✕</span>
+      </div>`
+    ).join("");
+}
+
+function loadDraftIntoPreview(id) {
+  const d = savedDrafts.find(x => x.id === id);
+  if (!d) return;
+  document.getElementById("content-transcript").value = d.transcript || "";
+  const preview = document.getElementById("content-draft-preview");
+  const previewText = document.getElementById("content-draft-text");
+  if (d.draftText) {
+    previewText.innerHTML = simpleMarkdown(d.draftText);
+    preview.classList.remove("hidden");
+    contentDraftResult = { text: d.draftText, pillar: d.pillar, lang: d.lang };
+  } else {
+    preview.classList.add("hidden");
+    contentDraftResult = null;
+  }
+  showToast("Taslak yüklendi");
+}
+
+function renderSegments() {
+  const el = document.getElementById("rec-segments");
+  if (!el) return;
+  if (recSegments.length === 0) { el.innerHTML = ""; return; }
+  el.innerHTML = "<div style='margin-bottom:4px;font-weight:600'>Kayıt Parçaları:</div>" +
+    recSegments.map((s, i) =>
+      `<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:4px;font-size:12px;background:var(--accent-bg);color:var(--accent)">
+        #${i+1} ${(s.duration||0).toFixed(1)}s ${s.transcript ? '✓' : ''}
+        <span style="cursor:pointer;margin-left:4px;opacity:0.6" onclick="removeRecSegment(${s.id})">✕</span>
+      </span>`
+    ).join("") +
+    `<button class="btn-sm" style="margin-left:6px" onclick="startTranscribePipeline()">🔊 Birleştir ve Transkript'le</button>`;
+}
+
+async function removeRecSegment(id) {
+  await deleteSegmentFromDB(id);
+  loadLocalSegments();
+}
+
+// ─── Recording controls ───
+async function startContentRecording() {
+  // Stop if currently recording
+  if (recState === "recording" || recState === "paused") {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    }
+    return;
+  }
+
+  if (!window.isSecureContext) {
+    showContentRecNote("Ses kaydı yalnız HTTPS'te çalışır. Canlı sitede dene; burada 'Dosya yükle' veya 'Transkript yapıştır' kullan.");
+    return;
+  }
+
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) {
+      showContentRecNote("Mikrofon izni reddedildi. Tarayıcı adres çubuğundaki kilit ikonundan mikrofonu 'İzin Ver' yapıp tekrar dene.");
+    } else {
+      showContentRecNote("Mikrofona erişilemedi: " + (e?.message || e));
+    }
+    return;
+  }
+
+  recordedChunks = [];
+  const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+  mediaRecorder = new MediaRecorder(recStream, { mimeType: mime });
+
+  mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+    const dur = recStartTime ? (Date.now() - recStartTime) / 1000 : 0;
+    const seg = { blob, mimeType: mediaRecorder.mimeType, duration: dur, createdAt: Date.now(), transcript: null };
+    saveSegmentToDB(seg).then((id) => {
+      seg.id = id;
+      recSegments.push(seg);
+      renderSegments();
+    });
+    recStream.getTracks().forEach((t) => t.stop());
+    recStream = null;
+    mediaRecorder = null;
+    clearInterval(recordTimerInterval);
+    document.getElementById("record-timer").textContent = "";
+    const btn = document.getElementById("record-btn");
+    btn.textContent = "🔴 Kaydet";
+    document.getElementById("record-pause-btn").style.display = "none";
+    document.getElementById("record-resume-btn").style.display = "none";
+    showContentRecNote("✔ Parça kaydedildi (" + dur.toFixed(1) + "s) — devam et veya birleştir");
+    recState = "idle";
+    recordingActive = false;
+  };
+
+  mediaRecorder.start();
+  recState = "recording";
+  recordingActive = true;
+  recStartTime = Date.now();
+  document.getElementById("record-btn").textContent = "⏹ Durdur";
+  document.getElementById("record-pause-btn").style.display = "inline";
+  document.getElementById("record-resume-btn").style.display = "none";
+  showContentRecNote("Kaydediyor...");
+
+  recordTimerInterval = setInterval(() => {
+    const sec = Math.floor((Date.now() - recStartTime) / 1000);
+    document.getElementById("record-timer").textContent =
+      String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+  }, 200);
+}
+
+function pauseContentRecording() {
+  if (recState !== "recording" || !mediaRecorder || mediaRecorder.state === "inactive") return;
+  mediaRecorder.pause();
+  recState = "paused";
+  clearInterval(recordTimerInterval);
+  document.getElementById("record-pause-btn").style.display = "none";
+  document.getElementById("record-resume-btn").style.display = "inline";
+  showContentRecNote("Duraklatıldı — devam et veya durdur");
+}
+
+function resumeContentRecording() {
+  if (recState !== "paused" || !mediaRecorder || mediaRecorder.state === "inactive") return;
+  mediaRecorder.resume();
+  recState = "recording";
+  recStartTime = Date.now();
+  document.getElementById("record-pause-btn").style.display = "inline";
+  document.getElementById("record-resume-btn").style.display = "none";
+  showContentRecNote("Kaydediyor...");
+  recordTimerInterval = setInterval(() => {
+    const sec = Math.floor((Date.now() - recStartTime) / 1000);
+    document.getElementById("record-timer").textContent =
+      String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+  }, 200);
+}
+
+// ─── Transcription pipeline (Job polling) ───
+async function startTranscribePipeline() {
+  if (recSegments.length === 0) { showToast("Kayıt parçası yok"); return; }
+  const btn = document.getElementById("content-submit-btn");
+  const loading = document.getElementById("content-loading");
+  btn.disabled = true;
+  btn.textContent = "Transkript ediliyor...";
+  loading.classList.remove("hidden");
+
+  let combinedTranscript = "";
+  for (let i = 0; i < recSegments.length; i++) {
+    const seg = recSegments[i];
+    if (seg.transcript) { combinedTranscript += (combinedTranscript ? "\n\n" : "") + seg.transcript; continue; }
+
+    const jobId = crypto.randomUUID();
+    const form = new FormData();
+    form.append("audio", seg.blob, `segment_${seg.id}.webm`);
+    form.append("jobId", jobId);
+
+    try {
+      // 1) Upload to transcribe function
+      const uploadRes = await fetch("/.netlify/functions/transcribe", { method: "POST", body: form });
+      if (!uploadRes.ok) {
+        let err = "Yükleme hatası " + uploadRes.status;
+        try { const e = await uploadRes.json(); err = e.error?.message || err; } catch {}
+        throw new Error(err);
+      }
+      const { fileUri } = await uploadRes.json();
+
+      // 2) Trigger background transcription
+      const bgRes = await fetch("/.netlify/functions/transcribe-background", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId, fileUri, mimeType: seg.mimeType }),
+      });
+      if (!bgRes.ok) { const e = await bgRes.text(); throw new Error("Background iş başlatılamadı: " + e); }
+
+      // 3) Poll for result
+      const transcript = await pollJob(jobId, 120);
+      seg.transcript = transcript;
+      combinedTranscript += (combinedTranscript ? "\n\n" : "") + transcript;
+
+      // Update segment in DB
+      const db = await openDB();
+      const tx = db.transaction("segments", "readwrite");
+      tx.objectStore("segments").put(seg);
+      renderSegments();
+    } catch (e) {
+      showToast("Parça " + (i + 1) + " transkript hatası: " + e.message);
+      btn.disabled = false;
+      btn.textContent = "✦ Taslağı Üret";
+      loading.classList.add("hidden");
+      return;
+    }
+  }
+
+  // Write combined transcript to textarea
+  document.getElementById("content-transcript").value = combinedTranscript;
+  switchContentMode("text");
+  document.querySelectorAll(".content-mode-radio input").forEach((r) => r.checked = r.value === "text");
+  showToast("Transkript hazır ✓");
+  btn.disabled = false;
+  btn.textContent = "✦ Taslağı Üret";
+  loading.classList.add("hidden");
+}
+
+async function pollJob(jobId, maxSec) {
+  const start = Date.now();
+  while (true) {
+    if ((Date.now() - start) / 1000 > maxSec) throw new Error("İş zaman aşımına uğradı (" + maxSec + "s)");
+    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const res = await fetch("/.netlify/functions/transcribe-status?jobId=" + encodeURIComponent(jobId));
+      if (res.status === 404) continue; // not yet created
+      if (!res.ok) { const e = await res.text(); throw new Error("Status hatası: " + e); }
+      const job = await res.json();
+      if (job.status === "done") return job.transcript || "";
+      if (job.status === "unsupported_format") throw new Error(job.error || "Bu dosya formatı desteklenmiyor. MP3, WAV, OGG, FLAC, M4A, WebM kullan.");
+      if (job.status === "error") throw new Error(job.error || "Bilinmeyen hata");
+      // processing — continue
+    } catch (e) {
+      if (e.message.includes("Status hatası") || e.message.includes("İş zaman")) throw e;
+      // network error, retry
+    }
+  }
+}
+
+// ─── File → Transcript (new pipeline instead of inline base64) ───
+async function transcribeFile(file) {
+  const maxSize = 20 * 1024 * 1024;
+  if (file.size > maxSize) { showToast("Dosya çok büyük (maks 20MB)"); return null; }
+
+  const mime = mimeForFile(file);
+  const jobId = crypto.randomUUID();
+  const form = new FormData();
+  form.append("audio", file);
+  form.append("jobId", jobId);
+
+  try {
+    const uploadRes = await fetch("/.netlify/functions/transcribe", { method: "POST", body: form });
+    if (!uploadRes.ok) {
+      let err = "Yükleme hatası " + uploadRes.status;
+      try { const e = await uploadRes.json(); err = e.error?.message || err; } catch {}
+      throw new Error(err);
+    }
+    const { fileUri } = await uploadRes.json();
+
+    const bgRes = await fetch("/.netlify/functions/transcribe-background", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId, fileUri, mimeType: mime }),
+    });
+    if (!bgRes.ok) { const e = await bgRes.text(); throw new Error("Background iş başlatılamadı: " + e); }
+
+    return await pollJob(jobId, 120);
+  } catch (e) {
+    showToast("Dosya işleme hatası: " + e.message);
+    return null;
+  }
+}
+
+// ─── GENERATE ───
+async function generateContentDraft() {
+  const fileEl = document.getElementById("content-file");
+  const transcriptEl = document.getElementById("content-transcript");
+  const extraEl = document.getElementById("content-extra");
+  const langEl = document.getElementById("content-lang");
+  const btn = document.getElementById("content-submit-btn");
+  const loading = document.getElementById("content-loading");
+  const preview = document.getElementById("content-draft-preview");
+  const previewText = document.getElementById("content-draft-text");
+  const pillar = blogPillars.find(p => p.id === contentSelectedPillar) || blogPillars[0];
+  const lang = langEl.value;
+  const langLabel = lang === "tr" ? "Türkçe" : "İngilizce";
+  const extraNote = extraEl ? extraEl.value.trim() : "";
+
+  let transcript = "";
+
+  if (contentMode === "file" && fileEl.files.length > 0) {
+    btn.disabled = true; btn.textContent = "Transkript ediliyor...";
+    loading.classList.remove("hidden");
+    const transcript = await transcribeFile(fileEl.files[0]);
+    if (transcript === null) { btn.disabled = false; btn.textContent = "✦ Taslağı Üret"; loading.classList.add("hidden"); return; }
+    if (!transcript) { showToast("Transkript alınamadı"); btn.disabled = false; btn.textContent = "✦ Taslağı Üret"; loading.classList.add("hidden"); return; }
+    transcriptEl.value = transcript;
+  } else if (contentMode === "text") {
+    transcript = transcriptEl.value.trim();
+  } else if (contentMode === "record") {
+    transcript = transcriptEl.value.trim();
+  }
+
+  if (!transcript) { showToast("Ses kaydet, dosya yükle veya transkript gir"); btn.disabled = false; btn.textContent = "✦ Taslağı Üret"; loading.classList.add("hidden"); return; }
+
+  btn.disabled = true;
+  btn.textContent = "Oluşturuluyor...";
+  loading.classList.remove("hidden");
+  preview.classList.add("hidden");
+
+  const systemPrompt = `Sen Eren Kumcuoğlu'nun blog yazılarını onun sesiyle yazan editörsün. Sana ham bir transkript ve bir pillar verilecek; yayına yakın bir taslağa dönüştür.
+
+TON: Samimi, dobra, doğrudan, anti-corporate. Tevazu + keskin gözlem. Polish'ten önce samimiyet.
+
+YAPI: Açılış mutlaka anekdot/provokasyon/soru — ASLA "Bugün sizinle X paylaşmak istiyorum". Gövde: hikaye + çıkarım + framework, kısa paragraflar (3-4 cümle), ## altbaşlıklar. Kapanış: net takeaway veya açık uçlu soru — ASLA "Umarım faydalı olmuştur".
+
+YAPMA: "5 şey öğrendim", "minnettarım" açılışı, humblebrag, generic motivasyon, isim/marka ifşası.
+
+YAP: filtresiz çıkarım (kişi/marka anonim), Türkiye bağlamından evrensel ders, gerektiğinde eski yazılara gönderme, okura ara ara soru. TR ise "sen" dili; EN ise birinci tekil. 1000-2000 kelime.
+
+Pillar: ${pillar.id} — ${pillar.label}
+Dil: ${langLabel}
+
+ÇIKTI (başka hiçbir şey yazma): önce "## Başlık Önerileri" altında 3 başlık; sonra "---"; sonra yazının kendisi (hook → ## altbaşlıklar → güçlü kapanış), Markdown.`;
+
+  const userText = `PILLAR: ${pillar.label}\n\nTranskript / Notlar:\n${transcript.substring(0, 8000)}${extraNote ? `\n\nEk not: ${extraNote}` : ""}`;
+
+  try {
+    const res = await fetch("/.netlify/functions/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: GEMINI_MODEL, payload: { contents: [{ parts: [{ text: systemPrompt }, { text: userText }] }] } })
+    });
+    if (!res.ok) throw await parseGeminiError(res);
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (!text) { showToast("Boş yanıt"); btn.disabled = false; btn.textContent = "✦ Taslağı Üret"; loading.classList.add("hidden"); return; }
+    contentDraftResult = { text, pillar: contentSelectedPillar, lang };
+    previewText.innerHTML = simpleMarkdown(text);
+    preview.classList.remove("hidden");
+    showToast("Taslak hazır ✓");
+    // IndexedDB'ye kaydet
+    const draftRecord = { title: text.split("\n")[0].replace(/^#+\s*/, "").trim() || "Taslak", transcript, draftText: text, pillar: contentSelectedPillar, lang, createdAt: Date.now() };
+    const newId = await saveDraftToDB(draftRecord);
+    draftRecord.id = newId;
+    savedDrafts.unshift(draftRecord);
+    renderSavedDrafts();
+  } catch(e) {
+    showToast("Gemini: " + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = "✦ Taslağı Üret";
+  loading.classList.add("hidden");
+}
+
+function simpleMarkdown(text) {
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+}
+
+function saveContentDraft() {
+  if (!contentDraftResult) return;
+  const title = contentDraftResult.text.split("\n")[0].replace(/^#+\s*/, "").trim() || "Ses taslağı";
+  const idea = {
+    id: Date.now(),
+    title: title.substring(0, 120),
+    pillar: contentDraftResult.pillar,
+    draft: contentDraftResult.text,
+    tags: [],
+    createdAt: new Date().toISOString(),
+    aiResult: contentDraftResult.text
+  };
+  blogIdeas.unshift(idea);
+  saveBlogLocal();
+  pushBlogIdea(idea);
+  renderBlogList();
+  showToast("Blog fikri olarak kaydedildi ✓");
+  document.getElementById("content-draft-preview").classList.add("hidden");
+  contentDraftResult = null;
+}
+
+function copyContentDraft() {
+  if (!contentDraftResult) return;
+  navigator.clipboard.writeText(contentDraftResult.text).then(() => showToast("Kopyalandı ✓")).catch(() => showToast("Kopyalanamadı"));
+}
+
+let lastExcerptText = "";
+
+function showExcerpt(text) {
+  lastExcerptText = text;
+  document.getElementById("excerpt-text").textContent = text;
+  document.getElementById("excerpt-result").style.display = "block";
+}
+
+function copyExcerpt() {
+  if (!lastExcerptText) return;
+  navigator.clipboard.writeText(lastExcerptText).then(() => showToast("Kopyalandı ✓")).catch(() => showToast("Kopyalanamadı"));
+}
+
+async function generateLinkedInExcerpt(e) {
+  const btn = e.currentTarget || document.querySelector("#content-draft-preview .btn-sm:last-child");
+  if (!contentDraftResult || btn.disabled) return;
+  const text = contentDraftResult.text;
+  const lang = contentDraftResult.lang || "tr";
+  btn.disabled = true;
+  btn.textContent = "Oluşturuluyor...";
+
+  const prompt = `Bu yazının ${lang === "tr" ? "300-500 kelimelik LinkedIn versiyonunu yaz. İlk cümle scroll durdurucu. Anti-corporate ton. Sonunda tam yazıya yönlendiren tek satır. Hashtag yok" : "300-500 word LinkedIn version. First sentence is a scroll-stopper. Anti-corporate tone. End with one line directing to the full post. No hashtags"}.
+
+Yazı:
+${text.substring(0, 4000)}`;
+
+  try {
+    const res = await fetch("/.netlify/functions/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: GEMINI_MODEL, payload: { contents: [{ parts: [{ text: prompt }] }] } })
+    });
+    if (!res.ok) throw await parseGeminiError(res);
+    const data = await res.json();
+    const linkedinText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (linkedinText) {
+      showExcerpt(linkedinText);
+      showToast("LinkedIn çıktısı hazır ✓");
+    } else {
+      showToast("Yanıt alınamadı");
+    }
+  } catch(e) {
+    showToast("LinkedIn: " + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = "🔗 LinkedIn excerpt üret";
+}
+
+async function generateSubstackExcerpt(e) {
+  const btn = e.currentTarget || document.querySelector(".blog-save-btn + .btn-sm");
+  if (!contentDraftResult || btn.disabled) return;
+  const text = contentDraftResult.text;
+  const lang = contentDraftResult.lang || "tr";
+  btn.disabled = true;
+  btn.textContent = "Oluşturuluyor...";
+
+  const prompt = `Bu yazının ${lang === "tr" ? "Substack bülteni için uygun, 400-800 kelimelik bir sürümünü yaz. Ton samimi ve sohbet havasında olsun. Girişte bir hook, ardından ana fikir, sonra kişisel yorum/kazanım, kapanışta okura soru veya eylem çağrısı. Doğrudan yayına hazır olsun. Başlık: yok, sadece metin" : "400-800 word Substack newsletter version. Conversational, personal tone. Hook opening, main idea, personal take, closing with a question or CTA. Ready to publish. No title, just the body"}
+
+Yazı:
+${text.substring(0, 4000)}`;
+
+  try {
+    const res = await fetch("/.netlify/functions/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: GEMINI_MODEL, payload: { contents: [{ parts: [{ text: prompt }] }] } })
+    });
+    if (!res.ok) throw await parseGeminiError(res);
+    const data = await res.json();
+    const substackText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (substackText) {
+      showExcerpt(substackText);
+      showToast("Substack çıktısı hazır ✓");
+    } else {
+      showToast("Yanıt alınamadı");
+    }
+  } catch(e) {
+    showToast("Substack: " + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = "📋 Substack çıktısı üret";
+}
+
+// ─── INIT ───
+if (!checkAuth()) {
+  // Login gösteriliyor — init, login() başarılı olunca çağrılacak
+} else {
+  loadTheme();
+  setDate();
+  loadBlogIdeas();
+  loadFromSupabase();
+  loadLocalSegments();
+  loadSavedDrafts();
+}
+</script>
+</div>
+</body>
+</html>
