@@ -1,19 +1,26 @@
 import { NextRequest } from "next/server";
 import { createProvider } from "@/lib/ai";
-import { createClient } from "@/lib/supabase/server";
+import { createClientFromRequest } from "@/lib/supabase/from-request";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkUsageLimit, incrementUsage } from "@/lib/db/usage";
 import { userFacingMessage } from "@/lib/ai/errors";
-import { logError, GENERIC_ERROR_MESSAGE } from "@/lib/log-error";
+import { logError } from "@/lib/log-error";
+import { corsHeaders, corsPreflight } from "@/lib/cors";
+
+export function OPTIONS(request: NextRequest) {
+  return corsPreflight(request);
+}
 
 export async function POST(request: NextRequest) {
   let userId: string | undefined;
+  const cors = corsHeaders(request.headers.get("origin"));
+  const reply = (data: unknown, status = 200) => Response.json(data, { status, headers: cors });
 
   try {
-    const supabase = await createClient();
+    const supabase = await createClientFromRequest(request);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return reply({ error: "Unauthorized" }, 401);
     }
     userId = user.id;
 
@@ -21,7 +28,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get("audio");
 
     if (!file || !(file instanceof Blob)) {
-      return Response.json({ error: "Audio file required" }, { status: 400 });
+      return reply({ error: "Audio file required" }, 400);
     }
 
     const allowedTypes = [
@@ -32,17 +39,11 @@ export async function POST(request: NextRequest) {
 
     const mimeType = file.type || "audio/webm";
     if (!allowedTypes.includes(mimeType) && !mimeType.startsWith("audio/")) {
-      return Response.json(
-        { error: `Unsupported audio type: ${mimeType}` },
-        { status: 400 }
-      );
+      return reply({ error: `Unsupported audio type: ${mimeType}` }, 400);
     }
 
     if (file.size > 20 * 1024 * 1024) {
-      return Response.json(
-        { error: "File too large. Maximum 20MB." },
-        { status: 400 }
-      );
+      return reply({ error: "File too large. Maximum 20MB." }, 400);
     }
 
     await checkUsageLimit(supabase, user.id);
@@ -66,6 +67,8 @@ export async function POST(request: NextRequest) {
     const provider = await createProvider();
     const text = await provider.transcribe({ audio: file, mimeType });
 
+    // Privacy & security: raw audio is NOT retained. Delete it immediately after
+    // transcription; we only keep the transcript/draft.
     const { error: deleteError } = await admin
       .storage
       .from("recordings")
@@ -77,10 +80,10 @@ export async function POST(request: NextRequest) {
 
     await incrementUsage(supabase, user.id);
 
-    return Response.json({ text });
+    return reply({ text });
   } catch (error) {
     const message = userFacingMessage(error);
     logError({ error, userId, context: "POST /api/ai/transcribe" });
-    return Response.json({ error: message }, { status: 429 });
+    return reply({ error: message }, 429);
   }
 }

@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { useLocale } from "@/lib/use-locale";
+
+type ContentStatus = "draft" | "published" | "archived";
 
 interface ContentEntry {
   id: string;
@@ -14,7 +17,16 @@ interface ContentEntry {
   body: string | null;
   scheduled_at: string | null;
   created_at: string;
+  status?: ContentStatus | null;
+  excerpts?: Record<string, string> | null;
 }
+
+const LANG_PREFIX = "Write the output in Turkish.\n\n";
+const PLATFORMS: { key: "linkedin" | "x" | "substack"; label: string; promptName: string }[] = [
+  { key: "linkedin", label: "LinkedIn", promptName: "a LinkedIn" },
+  { key: "x", label: "X (Twitter)", promptName: "an X (Twitter)" },
+  { key: "substack", label: "Substack / Medium", promptName: "a Substack/Medium" },
+];
 
 // Content pillars. These default to the user's pillars and will be set per-user
 // during onboarding (add / remove / edit). Kept as a constant for now.
@@ -27,10 +39,24 @@ const PILLARS = [
 ];
 
 function ContentPageInner() {
+  const tt = useLocale();
+  const [pillars, setPillars] = useState<string[]>(PILLARS);
+  useEffect(() => {
+    fetch("/api/personas")
+      .then((r) => r.json())
+      .then((d) => {
+        const p = ((d?.profile?.pillars ?? []) as { title?: string }[]).map((x) => x.title).filter(Boolean) as string[];
+        if (p.length) setPillars(p);
+      })
+      .catch(() => {});
+  }, []);
   const searchParams = useSearchParams();
   const [entries, setEntries] = useState<ContentEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<ContentStatus | "all">("all");
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   // Form
   const [showForm, setShowForm] = useState(false);
@@ -48,6 +74,8 @@ function ContentPageInner() {
   const [editScheduled, setEditScheduled] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editExcerpts, setEditExcerpts] = useState<Record<string, string>>({});
+  const [busyFmt, setBusyFmt] = useState<string | null>(null);
 
   const loadEntries = useCallback(async (cat?: string | null) => {
     setLoading(true);
@@ -116,6 +144,24 @@ function ContentPageInner() {
     }
   }, []);
 
+  const updateStatus = useCallback(async (id: string, status: ContentStatus) => {
+    setStatusBusy(true);
+    try {
+      const res = await fetch("/api/content", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)));
+      setEditEntry((prev) => (prev && prev.id === id ? { ...prev, status } : prev));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setStatusBusy(false);
+    }
+  }, []);
+
   // Edit
   const openEdit = useCallback((entry: ContentEntry) => {
     setEditEntry(entry);
@@ -124,7 +170,31 @@ function ContentPageInner() {
     setEditCategory(entry.category ?? "");
     setEditBody(entry.body ?? "");
     setEditScheduled(entry.scheduled_at ? entry.scheduled_at.slice(0, 16) : "");
+    setEditExcerpts(entry.excerpts ?? {});
+    setBusyFmt(null);
   }, []);
+
+  const genPlatform = useCallback(async (fmt: string, promptName: string) => {
+    if (!editEntry || !editBody.trim() || busyFmt) return;
+    setBusyFmt(fmt);
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: `${LANG_PREFIX}Generate ${promptName} post — start with a strong hook, then a concise summary — from this content:\n\n${editBody}`, format: fmt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const next = { ...editExcerpts, [fmt]: data.text as string };
+      setEditExcerpts(next);
+      await fetch("/api/content", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editEntry.id, excerpts: next }) });
+      setEntries((prev) => prev.map((e) => (e.id === editEntry.id ? { ...e, excerpts: next } : e)));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBusyFmt(null);
+    }
+  }, [editEntry, editBody, busyFmt, editExcerpts]);
 
   // Open a specific entry when arriving via ?id= (e.g. the Studio title link)
   useEffect(() => {
@@ -147,6 +217,7 @@ function ContentPageInner() {
       };
       if (editScheduled) payload.scheduled_at = new Date(editScheduled).toISOString();
       else payload.scheduled_at = null;
+      if (Object.keys(editExcerpts).length) payload.excerpts = editExcerpts;
 
       const res = await fetch("/api/content", {
         method: "PATCH",
@@ -161,27 +232,40 @@ function ContentPageInner() {
     } finally {
       setSavingEdit(false);
     }
-  }, [editEntry, editTitle, editCategory, editBody, editScheduled, loadEntries, activeCategory]);
+  }, [editEntry, editTitle, editCategory, editBody, editScheduled, editExcerpts, loadEntries, activeCategory]);
 
   const allCategories = [...new Set(entries.map((e) => e.category).filter(Boolean))] as string[];
+  const statusOf = (e: ContentEntry): ContentStatus => (e.status as ContentStatus) ?? "draft";
+  const visibleEntries = entries.filter((e) => statusFilter === "all" || statusOf(e) === statusFilter);
+  const statusFilters: { key: ContentStatus | "all"; label: string }[] = [
+    { key: "all", label: tt.filterAll },
+    { key: "draft", label: tt.statusDraft },
+    { key: "published", label: tt.statusPublished },
+    { key: "archived", label: tt.statusArchived },
+  ];
 
   const formatDate = (d: string) => {
     return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[120] rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white dark:bg-zinc-900 px-4 py-2.5 text-sm font-medium text-zinc-800 dark:text-zinc-100 shadow-2xl">
+          {toast}
+        </div>
+      )}
       <div className="flex items-center justify-between animate-slide-up">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Content
+            {tt.contentTitle}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Plan, organize, and schedule your content
+            {tt.contentDesc}
           </p>
         </div>
         <GlassButton variant="primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? "Close" : "New Content"}
+          {showForm ? tt.close : tt.newContent}
         </GlassButton>
       </div>
 
@@ -189,13 +273,13 @@ function ContentPageInner() {
       {showForm && (
         <GlassCard className="p-6 space-y-4" hover>
           <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-            New Content
+            {tt.newContent}
           </h2>
 
           <input
             value={formTitle}
             onChange={(e) => setFormTitle(e.target.value)}
-            placeholder="Content title"
+            placeholder={tt.contentTitlePh}
             className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           />
 
@@ -204,15 +288,15 @@ function ContentPageInner() {
             onChange={(e) => setFormCategory(e.target.value)}
             className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           >
-            <option value="">Select pillar</option>
-            {PILLARS.map((c) => (
+            <option value="">{tt.selectPillar}</option>
+            {pillars.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
 
           <div>
             <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
-              Draft
+              {tt.draftLabel}
             </label>
             <textarea
               value={formBody}
@@ -225,7 +309,7 @@ function ContentPageInner() {
 
           <div>
             <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
-              Scheduled publish date
+              {tt.scheduledDate}
             </label>
             <input
               type="datetime-local"
@@ -237,12 +321,29 @@ function ContentPageInner() {
 
           <div className="flex gap-2">
             <GlassButton variant="primary" onClick={handleSave} disabled={!formTitle.trim() || saving}>
-              {saving ? "Saving..." : "Save Content"}
+              {saving ? tt.saving : tt.saveContentBtn}
             </GlassButton>
-            <GlassButton variant="ghost" onClick={resetForm}>Cancel</GlassButton>
+            <GlassButton variant="ghost" onClick={resetForm}>{tt.cancel}</GlassButton>
           </div>
         </GlassCard>
       )}
+
+      {/* Status filter — segmented control (mobil paritesi) */}
+      <div className="flex rounded-full border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 p-1">
+        {statusFilters.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => setStatusFilter(s.key)}
+            className={`flex-1 text-xs font-semibold py-1.5 rounded-full transition-colors ${
+              statusFilter === s.key
+                ? "bg-emerald-600 text-white"
+                : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
 
       {/* Category filter */}
       <div className="flex flex-wrap gap-1.5 animate-slide-up">
@@ -254,7 +355,7 @@ function ContentPageInner() {
               : "border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           }`}
         >
-          All
+          {tt.filterAll}
         </button>
         {allCategories.map((c) => (
           <button
@@ -273,13 +374,22 @@ function ContentPageInner() {
 
       {/* Content grid */}
       {loading ? (
-        <p className="text-sm text-zinc-400 text-center py-12">Loading...</p>
-      ) : entries.length === 0 ? (
-        <p className="text-sm text-zinc-400 text-center py-12">No content yet</p>
+        <p className="text-sm text-zinc-400 text-center py-12">{tt.loadingText}</p>
+      ) : visibleEntries.length === 0 ? (
+        <p className="text-sm text-zinc-400 text-center py-12">{tt.noContent}</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {entries.map((entry) => (
-            <GlassCard key={entry.id} className="p-5 space-y-3 overflow-hidden group" onClick={() => openEdit(entry)}>
+        <div className="space-y-3">
+          {visibleEntries.map((entry) => {
+            const st = statusOf(entry);
+            const stStyle =
+              st === "published"
+                ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                : st === "archived"
+                  ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
+                  : "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400";
+            const stLabel = st === "published" ? tt.statusPublished : st === "archived" ? tt.statusArchived : tt.statusDraft;
+            return (
+            <GlassCard key={entry.id} className={`p-5 space-y-3 overflow-hidden group ${st === "archived" ? "opacity-70" : ""}`} onClick={() => openEdit(entry)}>
               {/* Category badge + dates */}
               <div className="flex items-center justify-between gap-2">
                 {entry.category ? (
@@ -289,7 +399,14 @@ function ContentPageInner() {
                 ) : (
                   <span />
                 )}
-                <span className="text-[10px] text-zinc-400">{formatDate(entry.created_at)}</span>
+                <div className="flex items-center gap-1.5">
+                  {entry.body && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-medium">
+                      {tt.draftAttached}
+                    </span>
+                  )}
+                  <span className="text-[10px] text-zinc-400">{formatDate(entry.created_at)}</span>
+                </div>
               </div>
 
               {/* Title */}
@@ -297,23 +414,30 @@ function ContentPageInner() {
                 {entry.title}
               </h3>
 
-              {/* Draft indicator */}
               {entry.body && (
-                <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-medium">
-                  Draft attached
-                </span>
+                <p className="text-[13px] text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-2">{entry.body}</p>
               )}
 
-              {/* Scheduled date */}
-              {entry.scheduled_at && (
-                <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-                  <span>📅</span>
-                  <span>Scheduled: {formatDate(entry.scheduled_at)}</span>
-                </div>
-              )}
-
+              {/* Status + scheduled date */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${stStyle}`}>{stLabel}</span>
+                {entry.scheduled_at && (
+                  <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                    📅 {formatDate(entry.scheduled_at)}
+                  </span>
+                )}
+                {entry.body && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(entry.body ?? "").then(() => setToast(tt.copied)).catch(() => {}); setTimeout(() => setToast(null), 2000); }}
+                    className="ml-auto text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
+                  >
+                    ⧉ {tt.copy}
+                  </button>
+                )}
+              </div>
             </GlassCard>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -321,45 +445,101 @@ function ContentPageInner() {
       {editEntry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" onClick={() => setEditEntry(null)}>
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white dark:bg-zinc-900 p-6 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Edit Content</h3>
-            <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Title"
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{tt.editContent}</h3>
+            <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder={tt.contentTitlePh}
               className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
             <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}
               className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
-              <option value="">Select pillar</option>
-              {PILLARS.map((c) => (<option key={c} value={c}>{c}</option>))}
+              <option value="">{tt.selectPillar}</option>
+              {pillars.map((c) => (<option key={c} value={c}>{c}</option>))}
             </select>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">Draft</label>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">{tt.draftLabel}</label>
               <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} placeholder="Full draft text..." rows={10}
                 className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 p-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-vertical leading-relaxed" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">Scheduled publish date</label>
+              <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">{tt.scheduledDate}</label>
               <input type="datetime-local" value={editScheduled} onChange={(e) => setEditScheduled(e.target.value)}
                 className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" />
             </div>
+
+            {/* Platform paylaşımları */}
+            {editBody.trim().length > 0 && (
+              <div className="space-y-3 pt-2 border-t border-zinc-200/60 dark:border-zinc-700/40">
+                <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">Platform Paylaşımları (hook + özet)</label>
+                <div className="flex flex-wrap gap-2">
+                  {PLATFORMS.map((p) => (
+                    <GlassButton key={p.key} size="sm" variant="secondary" disabled={!!busyFmt} onClick={() => genPlatform(p.key, p.promptName)}>
+                      {busyFmt === p.key ? "…" : editExcerpts[p.key] ? `${p.label} ↻` : p.label}
+                    </GlassButton>
+                  ))}
+                </div>
+                {PLATFORMS.map((p) =>
+                  editExcerpts[p.key] ? (
+                    <div key={p.key} className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 p-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{p.label}</p>
+                        <button onClick={() => { navigator.clipboard?.writeText(editExcerpts[p.key]); setToast(tt.copied); setTimeout(() => setToast(null), 2000); }} className="text-[11px] text-zinc-400 hover:text-emerald-500">⧉ {tt.copy}</button>
+                      </div>
+                      <textarea value={editExcerpts[p.key]} onChange={(e) => setEditExcerpts((s) => ({ ...s, [p.key]: e.target.value }))} rows={4}
+                        className="w-full rounded-lg border border-zinc-200/60 dark:border-zinc-700/40 bg-transparent p-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-vertical leading-relaxed" />
+                    </div>
+                  ) : null,
+                )}
+              </div>
+            )}
+
+            {/* Status actions */}
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-zinc-200/60 dark:border-zinc-700/40">
+              {(() => {
+                const st = (editEntry.status as ContentStatus) ?? "draft";
+                return (
+                  <>
+                    {st !== "published" ? (
+                      <GlassButton variant="secondary" disabled={statusBusy} onClick={() => updateStatus(editEntry.id, "published")}>
+                        {tt.publish}
+                      </GlassButton>
+                    ) : (
+                      <GlassButton variant="ghost" disabled={statusBusy} onClick={() => updateStatus(editEntry.id, "draft")}>
+                        {tt.unpublish}
+                      </GlassButton>
+                    )}
+                    {st !== "archived" ? (
+                      <GlassButton variant="ghost" disabled={statusBusy} onClick={() => updateStatus(editEntry.id, "archived")}>
+                        {tt.archive}
+                      </GlassButton>
+                    ) : (
+                      <GlassButton variant="ghost" disabled={statusBusy} onClick={() => updateStatus(editEntry.id, "draft")}>
+                        {tt.unarchive}
+                      </GlassButton>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
             <div className="flex items-center gap-2 pt-2 border-t border-zinc-200/60 dark:border-zinc-700/40">
               <GlassButton variant="primary" onClick={handleSaveEdit} disabled={!editTitle.trim() || savingEdit}>
-                {savingEdit ? "Saving..." : "Save Changes"}
+                {savingEdit ? tt.saving : tt.saveChanges}
               </GlassButton>
-              <GlassButton variant="ghost" onClick={() => setEditEntry(null)}>Cancel</GlassButton>
+              <GlassButton variant="ghost" onClick={() => setEditEntry(null)}>{tt.cancel}</GlassButton>
 
               <div className="ml-auto">
                 {confirmDelete ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Are you sure?</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{tt.areYouSure}</span>
                     <button
                       onClick={() => { const id = editEntry.id; setConfirmDelete(false); setEditEntry(null); handleDelete(id); }}
                       className="rounded-xl px-3 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 transition-colors"
                     >
-                      Delete
+                      {tt.del}
                     </button>
                     <button
                       onClick={() => setConfirmDelete(false)}
                       className="rounded-xl px-3 py-2 text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                     >
-                      Cancel
+                      {tt.cancel}
                     </button>
                   </div>
                 ) : (
@@ -367,7 +547,7 @@ function ContentPageInner() {
                     onClick={() => setConfirmDelete(true)}
                     className="rounded-xl px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
                   >
-                    Delete
+                    {tt.del}
                   </button>
                 )}
               </div>

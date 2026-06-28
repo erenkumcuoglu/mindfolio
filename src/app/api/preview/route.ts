@@ -3,6 +3,7 @@ import { z } from "zod/v3";
 import { logError, GENERIC_ERROR_MESSAGE } from "@/lib/log-error";
 import { detectPlatform } from "@/lib/platform";
 import type { Platform, LinkPreview } from "@/lib/platform";
+import { corsHeaders, corsPreflight } from "@/lib/cors";
 
 const bodySchema = z.object({
   url: z.string().url().max(2000),
@@ -10,15 +11,18 @@ const bodySchema = z.object({
 
 export type { Platform, LinkPreview };
 
+export function OPTIONS(request: NextRequest) {
+  return corsPreflight(request);
+}
+
 export async function POST(request: NextRequest) {
+  const cors = corsHeaders(request.headers.get("origin"));
+  const reply = (data: unknown, status = 200) => Response.json(data, { status, headers: cors });
   try {
     const body = await request.json();
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
-      return Response.json(
-        { error: "Invalid URL", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return reply({ error: "Invalid URL", details: parsed.error.flatten() }, 400);
     }
 
     const url = parsed.data.url;
@@ -27,26 +31,23 @@ export async function POST(request: NextRequest) {
 
     if (platform === "youtube") {
       const preview = await fetchYouTubePreview(url);
-      if (preview) return Response.json({ preview });
+      if (preview) return reply({ preview });
     }
 
     if (platform === "twitter") {
       const preview = await fetchOGPreview(url, "twitter");
-      if (preview) return Response.json({ preview });
+      if (preview) return reply({ preview });
     }
 
     const preview = await fetchOGPreview(url, platform);
     if (!preview) {
-      return Response.json(
-        { error: "Could not extract preview" },
-        { status: 422 }
-      );
+      return reply({ error: "Could not extract preview" }, 422);
     }
 
-    return Response.json({ preview });
+    return reply({ preview });
   } catch (error) {
     logError({ error, context: "POST /api/preview" });
-    return Response.json({ error: GENERIC_ERROR_MESSAGE }, { status: 500 });
+    return reply({ error: GENERIC_ERROR_MESSAGE }, 500);
   }
 }
 

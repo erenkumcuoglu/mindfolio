@@ -80,7 +80,7 @@ export function ProfileMenu() {
                 onClick={() => setOpen(false)}
                 className={`block rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                   isActive
-                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200"
+                    ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/30"
                     : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50"
                 }`}
               >

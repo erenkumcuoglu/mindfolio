@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { NpsPrompt } from "@/components/ui/NpsPrompt";
 import { AppHeader } from "@/components/AppHeader";
+import { IslandTabBar } from "@/components/app/IslandTabBar";
 
 const skipEmails = (process.env.SKIP_ONBOARDING_EMAILS ?? "")
   .split(",")
@@ -41,12 +42,17 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <AppHeader />
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <ErrorBoundary>{children}</ErrorBoundary>
-      </main>
-      <NpsPrompt />
+    // Mobile-first: full-bleed on phones. On wider screens the app is shown as a
+    // centered, side-framed mobile column so desktop browsers aren't stretched.
+    <div className="min-h-screen bg-zinc-200/50 dark:bg-black/60">
+      <div className="relative mx-auto min-h-screen w-full max-w-[480px] bg-zinc-50 dark:bg-zinc-950 md:border-x md:border-zinc-200/70 md:dark:border-zinc-800/60 md:shadow-2xl">
+        <AppHeader />
+        <main className="px-4 pt-6 pb-28">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </main>
+        <NpsPrompt />
+      </div>
+      <IslandTabBar />
     </div>
   );
 }

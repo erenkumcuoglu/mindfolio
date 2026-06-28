@@ -1,22 +1,30 @@
 import type { PersonaProfile } from "@/lib/db/personas";
 
 export function renderPersonaProfile(p: PersonaProfile): string {
+  // Defensive: persona profiles can be partial/empty (e.g. user skipped or
+  // hasn't finished onboarding). Only render fields that actually exist.
+  const d = p.demographics;
+  const t = p.tone;
   const parts = [
     `## Writing Persona`,
     ``,
-    `**Purpose:** ${p.purpose}`,
-    `**Topics:** ${p.topics.join(", ")}`,
-    `**Background:** ${p.professional_background}`,
-    `**Industry:** ${p.demographics.industry} · **Role:** ${p.demographics.role} · **Experience:** ${p.demographics.experience}`,
-    `**Tone:** ${p.tone.style} · ${p.tone.formality} · ${p.tone.humor}`,
-    `**Voice:** ${p.tone.voice}`,
-    `**Audience:** ${p.audience}`,
-    `**Values:** ${p.values.join(", ")}`,
+    p.purpose ? `**Purpose:** ${p.purpose}` : "",
+    p.topics?.length ? `**Topics:** ${p.topics.join(", ")}` : "",
+    p.professional_background ? `**Background:** ${p.professional_background}` : "",
+    d && (d.industry || d.role || d.experience)
+      ? `**Industry:** ${d.industry ?? "—"} · **Role:** ${d.role ?? "—"} · **Experience:** ${d.experience ?? "—"}`
+      : "",
+    t && (t.style || t.formality || t.humor)
+      ? `**Tone:** ${t.style ?? ""} · ${t.formality ?? ""} · ${t.humor ?? ""}`
+      : "",
+    t?.voice ? `**Voice:** ${t.voice}` : "",
+    p.audience ? `**Audience:** ${p.audience}` : "",
+    p.values?.length ? `**Values:** ${p.values.join(", ")}` : "",
     p.positioning_statement ? `**Positioning:** ${p.positioning_statement}` : "",
-    p.pillars?.length ? `**Pillars:** ${p.pillars.map((pl) => `${pl.title}: ${pl.description}`).join(" | ")}` : "",
+    p.pillars?.length ? `**Pillars:** ${p.pillars.map((pl) => `${pl.title}: ${pl.description ?? ""}`).join(" | ")}` : "",
     p.voice_profile?.length ? `**Voice Profile:** ${p.voice_profile.join(", ")}` : "",
     p.sample_post ? `**Sample Post:**\n> ${p.sample_post}` : "",
-    p.writing_samples.length > 0
+    p.writing_samples?.length
       ? `**Writing Samples:**\n${p.writing_samples.map((s) => `  > ${s}`).join("\n")}`
       : "",
   ];
@@ -59,22 +67,34 @@ export function buildSystemPrompt(input: {
 
   const formatInstructions: Record<string, string> = {
     linkedin:
-      "Write a LinkedIn post. Keep it under 1500 chars. Use line breaks for readability. End with 3-5 relevant hashtags.",
+      "Write a LinkedIn post. Keep it under 1500 chars. Open with a strong hook. Use line breaks for readability. End with 3-5 relevant hashtags.",
     substack:
-      "Write a Substack newsletter draft. Use a conversational yet authoritative tone. Include a subject line at the top, then body text with short paragraphs.",
-    blog: "Write a blog post draft with a headline, introduction, 3-5 sections with subheadings, and a conclusion.",
-    x: "Write an X (Twitter) post. Keep it under 280 chars. Use punchy, engaging language. Include 1-2 relevant hashtags.",
+      "Write a Substack/newsletter draft. Start with a subject line, then body text with short paragraphs and **bold** for emphasis.",
+    blog:
+      "Write a blog post in the author's own voice.\n" +
+      "FIRST, output exactly 3 alternative headlines, each on its own line, in the output language, formatted exactly as:\n" +
+      "Başlık 1: ...\nBaşlık 2: ...\nBaşlık 3: ...\n" +
+      "Then a blank line, then the article body. In the body:\n" +
+      "- Use Markdown section headings with `##` (not bare text).\n" +
+      "- Use **bold** to mark words the author vocally emphasizes; use *italics* for softer emphasis.\n" +
+      "- Put any spoken dialogue or direct quotes inside a Markdown blockquote line starting with `> `.\n" +
+      "- Keep the author's wording and rhythm; do not corporate-ize or over-polish.",
+    x: "Write an X (Twitter) post. Keep it under 280 chars. Punchy and engaging. 1-2 relevant hashtags.",
     raw: "Write in plain text. No special formatting required.",
   };
 
   const formatInstruction = formatInstructions[format] ?? formatInstructions.raw;
 
   return [
-    `You are Mindfolio AI, a creative writing assistant.`,
+    `You are Mindfolio AI. You write finished content in the author's own natural voice and language.`,
+    `STRICT OUTPUT RULES:`,
+    `- Output ONLY the requested content. No preamble, no meta-commentary, no "Sure"/"Harika"/"Let's"/"İşte" lead-ins, no explanation of what you are doing or about to do.`,
+    `- Do not mention the persona, the brand, or the writing process. Just produce the content.`,
+    `- Write in the same language as the user's material.`,
     personaBlock,
     `## Writing Task`,
     formatInstruction,
-    `\nUser request:\n${prompt}`,
+    `\nSource material from the author:\n${prompt}`,
   ]
     .filter(Boolean)
     .join("\n");

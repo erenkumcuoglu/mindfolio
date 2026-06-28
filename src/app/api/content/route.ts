@@ -3,6 +3,8 @@ import { z } from "zod/v3";
 import { createClient } from "@/lib/supabase/server";
 import { logError, GENERIC_ERROR_MESSAGE } from "@/lib/log-error";
 
+const statusEnum = z.enum(["draft", "published", "archived"]);
+
 const createSchema = z.object({
   title: z.string().min(1).max(500),
   category: z.string().optional(),
@@ -10,6 +12,7 @@ const createSchema = z.object({
   notes: z.string().optional(),
   body: z.string().optional(),
   scheduled_at: z.string().datetime().optional().nullable(),
+  status: statusEnum.optional(),
 });
 
 const updateSchema = z.object({
@@ -20,6 +23,8 @@ const updateSchema = z.object({
   notes: z.string().nullable().optional(),
   body: z.string().nullable().optional(),
   scheduled_at: z.string().datetime().nullable().optional(),
+  status: statusEnum.optional(),
+  excerpts: z.record(z.string()).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -32,6 +37,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
+    const status = searchParams.get("status");
 
     let query = supabase
       .from("content")
@@ -40,6 +46,7 @@ export async function GET(request: NextRequest) {
       .limit(50);
 
     if (category) query = query.eq("category", category);
+    if (status) query = query.eq("status", status);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -64,17 +71,22 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
     }
 
+    const insertRow: Record<string, unknown> = {
+      user_id: user.id,
+      title: parsed.data.title,
+      category: parsed.data.category ?? null,
+      tags: parsed.data.tags ?? [],
+      notes: parsed.data.notes ?? null,
+      body: parsed.data.body ?? null,
+      scheduled_at: parsed.data.scheduled_at ?? null,
+    };
+    // Only set status explicitly when provided; otherwise rely on the DB default
+    // so the insert still works on instances where the column isn't migrated yet.
+    if (parsed.data.status) insertRow.status = parsed.data.status;
+
     const { data, error } = await supabase
       .from("content")
-      .insert({
-        user_id: user.id,
-        title: parsed.data.title,
-        category: parsed.data.category ?? null,
-        tags: parsed.data.tags ?? [],
-        notes: parsed.data.notes ?? null,
-        body: parsed.data.body ?? null,
-        scheduled_at: parsed.data.scheduled_at ?? null,
-      })
+      .insert(insertRow)
       .select()
       .single();
 

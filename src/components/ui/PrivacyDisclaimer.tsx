@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 
 const DEFAULT_TEXT =
-  "Your audio is used only for transcription and deleted immediately after processing (max 1 hour). It is never shared, stored long-term, or used for any other purpose.";
+  "Ses kaydın yalnızca yazıya çevirmek için kullanılır; kişisel verilerin gizliliği ve güvenliği gereği saklanmaz, işlem biter bitmez silinir. Yalnızca transkript ve taslakların saklanır.";
 
 interface PrivacyDisclaimerProps {
   label?: string;
@@ -16,7 +16,7 @@ interface PrivacyDisclaimerProps {
  * - Mobile / touch: toggles the explanation on tap.
  */
 export function PrivacyDisclaimer({
-  label = "What happens to my recordings?",
+  label = "Kayıtlarıma ne oluyor?",
   text = DEFAULT_TEXT,
 }: PrivacyDisclaimerProps) {
   const [open, setOpen] = useState(false);

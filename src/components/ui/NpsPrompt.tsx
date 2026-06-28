@@ -6,8 +6,25 @@ const SCORES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 const LABELS = ["0 — Not at all likely", "", "", "", "", "5 — Neutral", "", "", "", "", "10 — Extremely likely"];
 
-const SNOOZE_KEY = "nps_snooze_until";
-const SNOOZE_MS = 48 * 60 * 60 * 1000; // 48 hours
+// Escalating NPS cadence: first ask → "Not now" → +48h → "Not now" → +5 days →
+// "Not now" → never again. At most 3 asks total. Tracked locally so it works
+// regardless of server state.
+const NPS_KEY = "nps_schedule_v2";
+const H48 = 48 * 60 * 60 * 1000;
+const D5 = 5 * 24 * 60 * 60 * 1000;
+
+type NpsState = { count: number; next: number; done: boolean };
+
+function readNpsState(): NpsState {
+  try {
+    return JSON.parse(localStorage.getItem(NPS_KEY) || "null") || { count: 0, next: 0, done: false };
+  } catch {
+    return { count: 0, next: 0, done: false };
+  }
+}
+function writeNpsState(s: NpsState) {
+  try { localStorage.setItem(NPS_KEY, JSON.stringify(s)); } catch { /* ignore */ }
+}
 
 export function NpsPrompt() {
   const [show, setShow] = useState(false);
@@ -17,19 +34,22 @@ export function NpsPrompt() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Respect a local "Not now" snooze before asking the server.
-    try {
-      const until = Number(localStorage.getItem(SNOOZE_KEY) || 0);
-      if (until && Date.now() < until) return;
-    } catch {
-      // ignore storage errors
-    }
+    const st = readNpsState();
+    if (st.done || st.count >= 3) return;          // already asked 3× or completed
+    if (st.next && Date.now() < st.next) return;    // still snoozed
+
     fetch("/api/nps")
       .then((r) => r.json())
       .then((data) => {
-        if (data.show) setShow(true);
+        // Server explicitly says this user shouldn't be asked (already submitted).
+        if (data && data.show === false) {
+          writeNpsState({ ...st, done: true });
+          return;
+        }
+        setShow(true);
       })
-      .catch(() => {});
+      // If the server/endpoint isn't available, still follow the local cadence.
+      .catch(() => setShow(true));
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -41,22 +61,21 @@ export function NpsPrompt() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ score: selected, comment: comment.trim() || undefined }),
       });
-      setSubmitted(true);
-      setTimeout(() => setShow(false), 2000);
     } catch {
       // silently fail — don't block the user
     } finally {
+      writeNpsState({ count: 3, next: 0, done: true }); // never ask again
+      setSubmitted(true);
+      setTimeout(() => setShow(false), 2000);
       setLoading(false);
     }
   }, [selected, comment]);
 
   const handleDismiss = useCallback(() => {
-    // Snooze for 48h so it doesn't reappear on every page load.
-    try {
-      localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
-    } catch {
-      // ignore storage errors
-    }
+    const prev = readNpsState();
+    const count = prev.count + 1;
+    const next = count === 1 ? Date.now() + H48 : count === 2 ? Date.now() + D5 : 0;
+    writeNpsState({ count, next, done: count >= 3 });
     setShow(false);
   }, []);
 

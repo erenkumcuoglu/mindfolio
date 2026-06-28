@@ -8,6 +8,7 @@ const updateSchema = z.object({
   description: z.string().max(2000).optional(),
   voice: z.string().max(2000).optional(),
   profile: z.record(z.unknown()).optional(),
+  overwriteProfile: z.boolean().optional(),
   onboarding_complete: z.boolean().optional(),
   subscription: z
     .object({
@@ -17,6 +18,10 @@ const updateSchema = z.object({
       subscribed_at: z.string().optional(),
       canceled_at: z.string().optional(),
     })
+    .optional(),
+  // Pillar edits — merged into profile.pillars without overwriting the rest.
+  pillars: z
+    .array(z.object({ title: z.string().min(1).max(200), description: z.string().max(500).optional() }))
     .optional(),
 });
 
@@ -79,18 +84,29 @@ export async function PUT(request: NextRequest) {
       if (parsed.data.description !== undefined) updates.description = parsed.data.description;
       if (parsed.data.voice !== undefined) updates.voice = parsed.data.voice;
 
-      // Only allow profile overwrite if current profile is empty
+      // Allow profile overwrite if current profile is empty OR the caller
+      // explicitly opts in (e.g. regenerating the persona). Preserve the
+      // existing subscription so billing state is never lost on regenerate.
       if (parsed.data.profile !== undefined) {
-        const currentProfile = existing.data.profile as Record<string, unknown> | null;
-        if (!currentProfile || Object.keys(currentProfile).length === 0) {
-          updates.profile = parsed.data.profile;
+        const currentProfile = (existing.data.profile as Record<string, unknown> | null) ?? {};
+        const isEmpty = Object.keys(currentProfile).length === 0;
+        if (isEmpty || parsed.data.overwriteProfile) {
+          updates.profile = currentProfile.subscription
+            ? { ...parsed.data.profile, subscription: currentProfile.subscription }
+            : parsed.data.profile;
         }
       }
 
       // Handle subscription merge into existing profile
       if (parsed.data.subscription !== undefined) {
-        const currentProfile = (existing.data.profile ?? {}) as Record<string, unknown>;
+        const currentProfile = (updates.profile ?? existing.data.profile ?? {}) as Record<string, unknown>;
         updates.profile = { ...currentProfile, subscription: parsed.data.subscription };
+      }
+
+      // Handle pillars merge into existing profile (does not overwrite the rest)
+      if (parsed.data.pillars !== undefined) {
+        const currentProfile = (updates.profile ?? existing.data.profile ?? {}) as Record<string, unknown>;
+        updates.profile = { ...currentProfile, pillars: parsed.data.pillars };
       }
 
       // Only allow onboarding_complete to be set to true (never reset to false)

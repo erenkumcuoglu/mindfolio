@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useReducer, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { ThemeToggle } from "@/components/app/ThemeToggle";
 
 type StepType = "message" | "motivation" | "warmup" | "reveal" | "single" | "multi" | "input" | "tag-input" | "loader" | "paywall" | "done";
 
@@ -746,10 +747,19 @@ export default function OnboardingPage() {
   const touchStartRef = useRef({ x: 0, y: 0 });
   const [personaData, setPersonaData] = useState<any>(null);
 
-  // Guard: redirect if persona already exists
+  // Guard: redirect if persona already exists.
+  // `?preview` (or ?preview=1) skips the guard so the flow can be viewed
+  // anytime without creating a new account — UI only, no data is changed.
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
+    const preview =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).has("preview");
+    if (preview) {
+      setReady(true);
+      return;
+    }
     fetch("/api/personas")
       .then((r) => r.json())
       .then((data) => {
@@ -1196,6 +1206,8 @@ export default function OnboardingPage() {
         }
       }}
     >
+      <div className="absolute top-4 right-4 z-50"><ThemeToggle /></div>
+
       {/* ── PROGRESS BAR (continuous, no numbers) ── */}
       <header className="flex-shrink-0 pt-safe-top pt-6 pb-3 max-w-lg mx-auto w-full">
         <div className="h-1 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">

@@ -5,6 +5,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { detectPlatformFromUrl, PLATFORM_LABELS, PLATFORM_STYLES } from "@/lib/platform";
 import type { LinkPreview } from "@/lib/platform";
+import { useLocale } from "@/lib/use-locale";
 
 interface Idea {
   id: string;
@@ -19,6 +20,7 @@ interface Idea {
 }
 
 export default function IdeasPage() {
+  const tt = useLocale();
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -234,14 +236,14 @@ export default function IdeasPage() {
       <div className="flex items-center justify-between animate-slide-up">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Ideas
+            {tt.ideasTitle}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Bookmarked links, notes, and content inspiration
+            {tt.ideasDesc}
           </p>
         </div>
         <GlassButton variant="primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? "Close" : "New Idea"}
+          {showForm ? tt.close : tt.newIdea}
         </GlassButton>
       </div>
 
@@ -254,14 +256,14 @@ export default function IdeasPage() {
           <input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Title"
+            placeholder={tt.titlePh}
             className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           />
           <div className="relative">
             <input
               value={newUrl}
               onChange={(e) => handleUrlChange(e.target.value)}
-              placeholder="Paste a URL — preview will auto-fetch"
+              placeholder={tt.urlPastePh}
               className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
             {newLoading && (
@@ -330,11 +332,11 @@ export default function IdeasPage() {
                 onKeyDown={(e) =>
                   e.key === "Enter" && (e.preventDefault(), handleAddTag())
                 }
-                placeholder="Add tag..."
+                placeholder={tt.addTagPh}
                 className="flex-1 rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
               />
               <GlassButton size="sm" onClick={handleAddTag}>
-                Add
+                {tt.add}
               </GlassButton>
             </div>
             {allTags.length > 0 && (
@@ -360,10 +362,10 @@ export default function IdeasPage() {
               onClick={handleSaveIdea}
               disabled={!newTitle.trim() || saving}
             >
-              {saving ? "Saving..." : "Save Idea"}
+              {saving ? tt.saving : tt.saveIdea}
             </GlassButton>
             <GlassButton variant="ghost" onClick={resetForm}>
-              Cancel
+              {tt.cancel}
             </GlassButton>
           </div>
         </GlassCard>
@@ -374,7 +376,7 @@ export default function IdeasPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search ideas..."
+          placeholder={tt.searchIdeas}
           className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
         />
 
@@ -409,9 +411,9 @@ export default function IdeasPage() {
 
       {/* Grid */}
       {loading ? (
-        <p className="text-sm text-zinc-400 text-center py-12">Loading...</p>
+        <p className="text-sm text-zinc-400 text-center py-12">{tt.loadingText}</p>
       ) : ideas.length === 0 ? (
-        <p className="text-sm text-zinc-400 text-center py-12">No ideas yet</p>
+        <p className="text-sm text-zinc-400 text-center py-12">{tt.noIdeas}</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {ideas.map((idea) => (
@@ -424,23 +426,23 @@ export default function IdeasPage() {
       {editIdea && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" onClick={() => setEditIdea(null)}>
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white dark:bg-zinc-900 p-6 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Edit Idea</h3>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{tt.editIdea}</h3>
             <input
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              placeholder="Title"
+              placeholder={tt.titlePh}
               className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
             <input
               value={editUrl}
               onChange={(e) => setEditUrl(e.target.value)}
-              placeholder="URL (optional)"
+              placeholder={tt.urlOptionalPh}
               className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
             <textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              placeholder="Notes or summary..."
+              placeholder={tt.notesPh}
               rows={6}
               className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 p-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-vertical"
             />
@@ -474,17 +476,17 @@ export default function IdeasPage() {
                   value={editTagInput}
                   onChange={(e) => setEditTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddEditTag())}
-                  placeholder="Add tag..."
+                  placeholder={tt.addTagPh}
                   className="flex-1 rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 />
-                <GlassButton size="sm" onClick={handleAddEditTag}>Add</GlassButton>
+                <GlassButton size="sm" onClick={handleAddEditTag}>{tt.add}</GlassButton>
               </div>
             </div>
             <div className="flex gap-2">
               <GlassButton variant="primary" onClick={handleSaveEdit} disabled={!editTitle.trim() || savingEdit}>
-                {savingEdit ? "Saving..." : "Save Changes"}
+                {savingEdit ? tt.saving : tt.saveChanges}
               </GlassButton>
-              <GlassButton variant="ghost" onClick={() => setEditIdea(null)}>Cancel</GlassButton>
+              <GlassButton variant="ghost" onClick={() => setEditIdea(null)}>{tt.cancel}</GlassButton>
             </div>
           </div>
         </div>

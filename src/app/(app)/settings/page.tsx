@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { useLocale } from "@/lib/use-locale";
 
 type Step = "idle" | "confirm" | "deleting" | "done";
 type ResetStep = "idle" | "resetting" | "done";
 
 export default function SettingsPage() {
+  const tt = useLocale();
   const router = useRouter();
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -142,14 +144,14 @@ export default function SettingsPage() {
             type="password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
-            placeholder="Current password"
+            placeholder={tt.currentPwPh}
             className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           />
           <input
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="New password (min. 6 characters)"
+            placeholder={tt.newPwPh}
             className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           />
 
@@ -229,11 +231,11 @@ export default function SettingsPage() {
               This action is <strong>permanent and cannot be undone</strong>.
             </p>
             <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 list-disc list-inside">
-              <li>All your drafts and transcripts will be deleted</li>
-              <li>All your saved ideas and links will be deleted</li>
-              <li>Your writing persona will be deleted</li>
-              <li>Any audio recordings will be deleted</li>
-              <li>Your account will be removed from the system</li>
+              <li>{tt.delLi1}</li>
+              <li>{tt.delLi2}</li>
+              <li>{tt.delLi3}</li>
+              <li>{tt.delLi4}</li>
+              <li>{tt.delLi5}</li>
             </ul>
             <div className="flex gap-2 pt-2">
               <GlassButton variant="ghost" onClick={() => setStep("idle")}>

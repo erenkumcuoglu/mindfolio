@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logError, GENERIC_ERROR_MESSAGE } from "@/lib/log-error";
 
 /**
- * Cleans up audio recordings older than 1 hour.
+ * Cleans up audio recordings older than 24 hours.
  * Can be called by an external cron (Vercel Cron, GitHub Actions, etc.)
  * or manually for testing.
  *
@@ -12,7 +12,7 @@ import { logError, GENERIC_ERROR_MESSAGE } from "@/lib/log-error";
 export async function GET() {
   try {
     const admin = createAdminClient();
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const { data: folders, error: listError } = await admin
       .storage
@@ -43,7 +43,7 @@ export async function GET() {
 
       for (const file of files) {
         const createdAt = new Date(file.created_at ?? file.updated_at ?? 0);
-        if (createdAt < new Date(oneHourAgo)) {
+        if (createdAt < new Date(cutoff)) {
           toRemove.push(`${folder.name}/${file.name}`);
         }
       }

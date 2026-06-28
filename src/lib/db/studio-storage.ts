@@ -2,7 +2,7 @@ const DB_NAME = "mindfolio-studio";
 const DB_VERSION = 1;
 const STORE_NAME = "session";
 const KEY = "current";
-const AUDIO_TTL_MS = 60 * 60 * 1000; // 1 hour
+const AUDIO_TTL_MS = 60 * 60 * 1000; // 1 hour — raw audio is short-lived; only transcript/draft persist
 
 export interface StudioSession {
   audioChunks: Blob[];

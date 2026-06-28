@@ -7,8 +7,10 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { ToastStack } from "@/components/ui/Toast";
 import { Waveform } from "@/components/ui/Waveform";
 import { PrivacyDisclaimer } from "@/components/ui/PrivacyDisclaimer";
+import { MarkdownView } from "@/components/ui/MarkdownView";
 import { useAction } from "@/lib/use-action";
-import { loadSession, saveSession, clearAll } from "@/lib/db/studio-storage";
+import { loadSession, saveSession, clearAll, type StudioSession } from "@/lib/db/studio-storage";
+import { useLocale } from "@/lib/use-locale";
 
 interface PersonaInfo {
   name?: string;
@@ -60,6 +62,7 @@ function detectSystemLanguage(): string {
 }
 
 export default function DashboardPage() {
+  const tt = useLocale();
   const [transcript, setTranscript] = useState("");
   const [notes, setNotes] = useState("");
   const [draft, setDraft] = useState("");
@@ -77,8 +80,16 @@ export default function DashboardPage() {
   const [ideaResults, setIdeaResults] = useState<Idea[]>([]);
   const [searchingIdeas, setSearchingIdeas] = useState(false);
 
+  const [showWrite, setShowWrite] = useState(false);
+  const [writeTitle, setWriteTitle] = useState("");
+  const [writeCat, setWriteCat] = useState("");
+  const [writeBody, setWriteBody] = useState("");
+  const [writeSaving, setWriteSaving] = useState(false);
+
   const [recording, setRecording] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [pendingSession, setPendingSession] = useState<StudioSession | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
@@ -97,24 +108,28 @@ export default function DashboardPage() {
       .catch(() => {});
   }, []);
 
+  const restoreContent = useCallback((s: StudioSession) => {
+    if (s.transcript) setTranscript(s.transcript);
+    if (s.draft) setDraft(s.draft);
+    if (s.excerpts && Object.keys(s.excerpts).length) setExcerpts(s.excerpts);
+    if (s.draftId) setDraftId(s.draftId);
+    if (s.titleOptions?.length) setTitleOptions(s.titleOptions);
+    if (s.selectedTitle) setSelectedTitle(s.selectedTitle);
+    if (s.contentId) setContentId(s.contentId);
+    if (s.linkedIdea) setLinkedIdea(s.linkedIdea as Idea);
+    if (s.recordedBlob) { setRecordedBlob(s.recordedBlob); setElapsed(s.elapsed); }
+  }, []);
+
   useEffect(() => {
     loadSession().then((s) => {
-      if (s.transcript) setTranscript(s.transcript);
-      if (s.draft) setDraft(s.draft);
+      // Non-content prefs restore silently.
       if (s.notes) setNotes(s.notes);
       if (s.language) setLanguage(s.language);
-      if (s.excerpts && Object.keys(s.excerpts).length) setExcerpts(s.excerpts);
-      if (s.draftId) setDraftId(s.draftId);
-      if (s.titleOptions?.length) setTitleOptions(s.titleOptions);
-      if (s.selectedTitle) setSelectedTitle(s.selectedTitle);
-      if (s.contentId) setContentId(s.contentId);
-      if (s.linkedIdea) setLinkedIdea(s.linkedIdea as Idea);
-      if (s.recordedBlob) {
-        setRecordedBlob(s.recordedBlob);
-        setElapsed(s.elapsed);
-      }
+      // Unfinished work → ask before resuming (mobile parity).
+      if (s.transcript?.trim() || s.draft?.trim()) setPendingSession(s);
+      else restoreContent(s);
     });
-  }, []);
+  }, [restoreContent]);
 
   useEffect(() => {
     if (notes || language) saveSession({ notes, language });
@@ -188,6 +203,22 @@ export default function DashboardPage() {
       console.error("Recording failed:", err);
     }
   }, []);
+
+  // 3-2-1 countdown, then start recording (mobile parity).
+  const beginRecording = useCallback(() => {
+    setCountdown(3);
+    let n = 3;
+    const id = setInterval(() => {
+      n -= 1;
+      if (n <= 0) {
+        clearInterval(id);
+        setCountdown(null);
+        startRecording();
+      } else {
+        setCountdown(n);
+      }
+    }, 800);
+  }, [startRecording]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorder.current && mediaRecorder.current.state !== "inactive") {
@@ -405,6 +436,31 @@ export default function DashboardPage() {
     await ensureContentEntry();
   }, [ensureContentEntry]);
 
+  // "Metin Yaz" — manual draft straight to Content.
+  const saveWrite = useCallback(async () => {
+    if (!writeTitle.trim() && !writeBody.trim()) return;
+    setWriteSaving(true);
+    try {
+      const res = await fetch("/api/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: writeTitle.trim() || writeBody.trim().slice(0, 60),
+          category: writeCat || undefined,
+          body: writeBody || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Kaydedilemedi");
+      setShowWrite(false);
+      setWriteTitle(""); setWriteCat(""); setWriteBody("");
+      showSuccessToast("Taslak Content'e kaydedildi.");
+    } catch {
+      showFlash("error", "Kaydedilemedi.");
+    } finally {
+      setWriteSaving(false);
+    }
+  }, [writeTitle, writeCat, writeBody, showSuccessToast, showFlash]);
+
   const fetchIdeas = useCallback(async (q?: string) => {
     setSearchingIdeas(true);
     try {
@@ -486,6 +542,31 @@ export default function DashboardPage() {
     <div className="space-y-6 animate-fade-in">
       <ToastStack toasts={toasts} onDismiss={clearToast} />
 
+      {/* Resume unfinished work (mobile parity) */}
+      {pendingSession && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white dark:bg-zinc-900 p-6 shadow-2xl space-y-4 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950 text-xl">↩️</div>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Kaldığın yerden devam?</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Kaydedilmemiş bir çalışman var{pendingSession.draft?.trim() ? " — taslak hazır" : pendingSession.transcript?.trim() ? " — transkript hazır" : ""}.
+            </p>
+            <div className="flex flex-col gap-2">
+              <GlassButton variant="primary" onClick={() => { restoreContent(pendingSession); setPendingSession(null); }}>Devam et</GlassButton>
+              <GlassButton variant="ghost" onClick={() => { resetAll(); setPendingSession(null); }}>Yeni başla</GlassButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3-2-1 countdown overlay */}
+      {countdown !== null && (
+        <div className="fixed inset-0 z-[105] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
+          <span className="text-7xl font-extrabold text-emerald-400 tabular-nums animate-fade-in" key={countdown}>{countdown}</span>
+          <span className="mt-3 text-sm text-zinc-200">Hazır ol — konuşmaya başla</span>
+        </div>
+      )}
+
       {/* Global loading overlay */}
       {anyLoading && activeLoadingKey && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
@@ -504,12 +585,12 @@ export default function DashboardPage() {
       <div className="flex items-start justify-between animate-slide-up">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Content Studio
+            {tt.studioTitle}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
             {persona?.profile?.tone?.style && persona.profile.topics?.length
-              ? `Writing as "${persona.name}" — ${persona.profile.tone.style} · ${persona.profile.topics.slice(0, 3).join(", ")}`
-              : "Record, transcribe, and generate content"}
+              ? `${persona.name} — ${persona.profile.tone.style} · ${persona.profile.topics.slice(0, 3).join(", ")}`
+              : tt.studioDesc}
           </p>
         </div>
       </div>
@@ -518,7 +599,7 @@ export default function DashboardPage() {
       <GlassCard className="p-6 space-y-8" hover>
         <div className="space-y-4">
           <h2 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-            Audio
+            {tt.audioSec}
           </h2>
 
           {recording && (
@@ -530,25 +611,13 @@ export default function DashboardPage() {
                 </span>
                 <div className="flex gap-2">
                   {paused ? (
-                    <GlassButton size="sm" variant="primary" onClick={resumeRecording}>Resume</GlassButton>
+                    <GlassButton size="sm" variant="primary" onClick={resumeRecording}>{tt.resume}</GlassButton>
                   ) : (
-                    <GlassButton size="sm" variant="secondary" onClick={pauseRecording}>Pause</GlassButton>
+                    <GlassButton size="sm" variant="secondary" onClick={pauseRecording}>{tt.pause}</GlassButton>
                   )}
-                  <GlassButton size="sm" variant="ghost" onClick={stopRecording}>Stop</GlassButton>
+                  <GlassButton size="sm" variant="ghost" onClick={stopRecording}>{tt.stop}</GlassButton>
                 </div>
               </div>
-            </div>
-          )}
-
-          {!recording && recordedBlob && !transcribing && (
-            <div className="flex items-center gap-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/40 p-3">
-              <span className="text-sm text-zinc-500">Recording ({formatDuration(elapsed)})</span>
-              <GlassButton size="sm" variant="primary" disabled={transcribing} onClick={() => run("transcribe", () => handleTranscribe(recordedBlob!))}>
-                {transcribing ? loadingLabel("transcribe") : "Metne çevir"}
-              </GlassButton>
-              <GlassButton size="sm" variant="ghost" onClick={() => setShowDiscardConfirm(true)}>
-                Discard
-              </GlassButton>
             </div>
           )}
 
@@ -559,28 +628,56 @@ export default function DashboardPage() {
           )}
 
           {!recording && !transcribing && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-              <GlassButton variant={recordedBlob ? "secondary" : "primary"} onClick={startRecording}>
-                {recordedBlob ? "Record another" : "Start Recording"}
+            <div className="flex flex-col items-center text-center py-2">
+              {/* Hero mic — core action, mirrors mobile */}
+              <button onClick={beginRecording} aria-label={tt.startRec} className="relative inline-flex h-24 w-24 items-center justify-center">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500/25 animate-ping" />
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500/15 animate-ping" style={{ animationDelay: "0.6s" }} />
+                <span className="relative inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-xl shadow-emerald-500/40 transition-transform active:scale-95">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor" stroke="none" />
+                    <path d="M5 11a7 7 0 0 0 14 0" />
+                    <line x1="12" y1="18" x2="12" y2="21" />
+                  </svg>
+                </span>
+              </button>
+              <p className="mt-3 text-sm font-semibold text-zinc-900 dark:text-zinc-50">{recordedBlob ? tt.recordAnother : tt.startRec}</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{tt.studioDesc}</p>
+
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <label className="cursor-pointer rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                  {tt.uploadAudio}
+                  <input type="file" accept=".m4a,.aac,.mp3,.wav,.ogg,.flac,.webm,audio/*" onChange={handleFileUpload} className="hidden" />
+                </label>
+                <GlassButton variant="ghost" onClick={() => setShowWrite(true)}>{tt.writeText}</GlassButton>
+              </div>
+              <div className="mt-3"><PrivacyDisclaimer /></div>
+            </div>
+          )}
+
+          {/* Recorded take — actions at the bottom of the Audio section */}
+          {!recording && recordedBlob && !transcribing && (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/40 p-3">
+              <span className="text-sm text-zinc-500">{tt.recordingLb} ({formatDuration(elapsed)})</span>
+              <GlassButton size="sm" variant="primary" disabled={transcribing} onClick={() => run("transcribe", () => handleTranscribe(recordedBlob!))}>
+                {transcribing ? loadingLabel("transcribe") : tt.toText}
               </GlassButton>
-              <label className="cursor-pointer rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                Upload audio file
-                <input type="file" accept=".m4a,.aac,.mp3,.wav,.ogg,.flac,.webm,audio/*" onChange={handleFileUpload} className="hidden" />
-              </label>
-              <PrivacyDisclaimer />
+              <GlassButton size="sm" variant="ghost" onClick={() => setShowDiscardConfirm(true)}>
+                {tt.discard}
+              </GlassButton>
             </div>
           )}
         </div>
 
         <div className="space-y-3 pt-6 border-t border-zinc-200/60 dark:border-zinc-700/40">
           <h2 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-            Transcript / Notes
+            {tt.transcriptSec}
           </h2>
           <textarea
             ref={textRef}
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
-            placeholder="Paste your transcript or write your notes here..."
+            placeholder={tt.transcriptPlaceholder}
             rows={5}
             className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 p-4 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-vertical min-h-[100px]"
           />
@@ -590,12 +687,12 @@ export default function DashboardPage() {
       {/* Generate settings */}
       <GlassCard className="p-6 space-y-4">
         <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-          Generate Settings
+          {tt.genSettings}
         </h2>
 
         <div>
           <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
-            Output language
+            {tt.outputLang}
           </label>
           <select
             value={language}
@@ -610,12 +707,12 @@ export default function DashboardPage() {
 
         <div>
           <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">
-            Additional notes (optional) — things you forgot to mention or want to emphasize
+            {tt.addNotesLabel}
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g., I want the tone to be more casual, mention the new product launch, and add a call to action at the end..."
+            placeholder={tt.addNotesPlaceholder}
             rows={2}
             className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 p-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-vertical"
           />
@@ -631,7 +728,7 @@ export default function DashboardPage() {
             onClick={() => run("generateDraft", generateDraft)}
             disabled={!transcript.trim() || isLoading("generateDraft")}
           >
-            {isLoading("generateDraft") ? loadingLabel("generateDraft") : "Generate Draft"}
+            {isLoading("generateDraft") ? loadingLabel("generateDraft") : tt.generateDraft}
           </GlassButton>
 
           <div className="w-px h-5 bg-zinc-200/60 dark:bg-zinc-700/40" />
@@ -642,7 +739,7 @@ export default function DashboardPage() {
             disabled={!hasDraft || isLoading("saveDraft")}
             onClick={() => run("saveDraft", async () => { await saveDraftOnly(linkedIdea?.id); showSuccessToast("Taslak kaydedildi."); })}
           >
-            {isLoading("saveDraft") ? loadingLabel("saveDraft") : draftId ? "Update Saved Draft" : "Save Draft"}
+            {isLoading("saveDraft") ? loadingLabel("saveDraft") : draftId ? tt.updateDraft : tt.saveDraft}
           </GlassButton>
 
           <GlassButton
@@ -651,16 +748,16 @@ export default function DashboardPage() {
             disabled={!hasDraft || isLoading("saveContent")}
             onClick={() => run("saveContent", async () => { await saveToContent(); showSuccessToast("Content'e kaydedildi."); })}
           >
-            {isLoading("saveContent") ? loadingLabel("saveContent") : contentId ? "Update in Content" : "Save to Content"}
+            {isLoading("saveContent") ? loadingLabel("saveContent") : contentId ? tt.updateInContent : tt.saveToContent}
           </GlassButton>
 
           <GlassButton
             size="sm"
             variant="secondary"
             disabled={!hasDraft}
-            onClick={() => handleCopy(draft).then(() => showSuccessToast("Kopyalandı!"))}
+            onClick={() => handleCopy(draft).then(() => showSuccessToast(tt.copied))}
           >
-            Copy Draft
+            {tt.copyDraft}
           </GlassButton>
 
           <GlassButton
@@ -669,7 +766,7 @@ export default function DashboardPage() {
             disabled={!hasDraft}
             onClick={() => setShowLinkModal(true)}
           >
-            {linkedIdea ? "Change Link" : "Link to Idea"}
+            {linkedIdea ? tt.changeLink : tt.linkToIdea}
           </GlassButton>
 
           {hasDraft && linkedIdea && (
@@ -684,7 +781,7 @@ export default function DashboardPage() {
       {hasDraft && (
         <GlassCard className="p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Title</h2>
+            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">{tt.titleSec}</h2>
             {(titleOptions.length > 0 || selectedTitle) && (
               <GlassButton
                 size="sm"
@@ -692,7 +789,7 @@ export default function DashboardPage() {
                 disabled={isLoading("generateTitles")}
                 onClick={() => run("generateTitles", () => generateTitles(draft))}
               >
-                {isLoading("generateTitles") ? loadingLabel("generateTitles") : "Regenerate titles"}
+                {isLoading("generateTitles") ? loadingLabel("generateTitles") : tt.regenTitles}
               </GlassButton>
             )}
           </div>
@@ -711,12 +808,12 @@ export default function DashboardPage() {
                 onClick={() => { setSelectedTitle(""); saveSession({ selectedTitle: "" }); }}
                 className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
               >
-                Change title
+                {tt.changeTitle}
               </button>
             </div>
           ) : titleOptions.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Pick a title:</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">{tt.pickTitle}</p>
               <div className="flex flex-col gap-2">
                 {titleOptions.map((t) => (
                   <button
@@ -736,7 +833,7 @@ export default function DashboardPage() {
               disabled={isLoading("generateTitles")}
               onClick={() => run("generateTitles", () => generateTitles(draft))}
             >
-              {isLoading("generateTitles") ? loadingLabel("generateTitles") : "Generate title options"}
+              {isLoading("generateTitles") ? loadingLabel("generateTitles") : tt.genTitleOptions}
             </GlassButton>
           )}
         </GlassCard>
@@ -746,13 +843,13 @@ export default function DashboardPage() {
       {hasDraft && (
         <GlassCard className="p-6">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Draft</h2>
+            <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">{tt.draftSec}</h2>
             <GlassButton
               size="sm"
               variant="ghost"
-              onClick={() => handleCopy(draft).then(() => showSuccessToast("Kopyalandı!"))}
+              onClick={() => handleCopy(draft).then(() => showSuccessToast(tt.copied))}
             >
-              Copy
+              {tt.copy}
             </GlassButton>
           </div>
           <textarea
@@ -761,6 +858,11 @@ export default function DashboardPage() {
             rows={8}
             className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 p-4 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-vertical leading-relaxed"
           />
+          {/* Rendered preview (mobile parity: headings/bold/quotes) */}
+          <div className="mt-3 rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/40 dark:bg-zinc-900/40 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">Önizleme</p>
+            <MarkdownView text={draft} />
+          </div>
         </GlassCard>
       )}
 
@@ -768,7 +870,7 @@ export default function DashboardPage() {
       {hasDraft && (
         <GlassCard className="p-6 space-y-6">
           <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-            Repurpose Draft
+            {tt.repurpose}
           </h2>
 
           {formatNames.map((fmt) => {
@@ -789,15 +891,15 @@ export default function DashboardPage() {
                           variant="secondary"
                           onClick={() => shareExcerpt(fmt, content)}
                         >
-                          {fmt === "x" ? "Share on X" : "Share on LinkedIn"}
+                          {fmt === "x" ? tt.shareOnX : tt.shareOnLinkedin}
                         </GlassButton>
                       )}
                       <GlassButton
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleCopy(content).then(() => showSuccessToast("Kopyalandı!"))}
+                        onClick={() => handleCopy(content).then(() => showSuccessToast(tt.copied))}
                       >
-                        Copy
+                        {tt.copy}
                       </GlassButton>
                       <GlassButton
                         size="sm"
@@ -808,7 +910,7 @@ export default function DashboardPage() {
                         })}
                         disabled={isLoading(`regenerate-${fmt}`)}
                       >
-                        {isLoading(`regenerate-${fmt}`) ? loadingLabel(`generate${fmt.charAt(0).toUpperCase() + fmt.slice(1)}`) : "Yeniden üret"}
+                        {isLoading(`regenerate-${fmt}`) ? loadingLabel(`generate${fmt.charAt(0).toUpperCase() + fmt.slice(1)}`) : tt.regenerate}
                       </GlassButton>
                     </div>
                   )}
@@ -828,7 +930,7 @@ export default function DashboardPage() {
                     onClick={() => run(`generate${fmt.charAt(0).toUpperCase() + fmt.slice(1)}`, () => generateExcerpt(fmt))}
                     disabled={isLoading(`generate${fmt.charAt(0).toUpperCase() + fmt.slice(1)}`)}
                   >
-                    {isLoading(`generate${fmt.charAt(0).toUpperCase() + fmt.slice(1)}`) ? loadingLabel(`generate${fmt.charAt(0).toUpperCase() + fmt.slice(1)}`) : `Generate ${FORMAT_LABELS[fmt]}`}
+                    {isLoading(`generate${fmt.charAt(0).toUpperCase() + fmt.slice(1)}`) ? loadingLabel(`generate${fmt.charAt(0).toUpperCase() + fmt.slice(1)}`) : `${tt.generatePrefix} ${FORMAT_LABELS[fmt]}`}
                   </GlassButton>
                 )}
               </div>
@@ -837,17 +939,53 @@ export default function DashboardPage() {
         </GlassCard>
       )}
 
+      {/* Metin Yaz — manual draft */}
+      {showWrite && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" onClick={() => setShowWrite(false)}>
+          <div className="w-full max-w-lg rounded-2xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white dark:bg-zinc-900 p-6 shadow-2xl space-y-3" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{tt.writeText}</h3>
+            <input
+              value={writeTitle}
+              onChange={(e) => setWriteTitle(e.target.value)}
+              placeholder={tt.contentTitlePh}
+              className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            />
+            <select
+              value={writeCat}
+              onChange={(e) => setWriteCat(e.target.value)}
+              className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            >
+              <option value="">{tt.selectPillar}</option>
+              {(persona?.profile?.topics ?? []).map((p) => (<option key={p} value={p}>{p}</option>))}
+            </select>
+            <textarea
+              value={writeBody}
+              onChange={(e) => setWriteBody(e.target.value)}
+              placeholder={tt.writeBodyPh}
+              rows={7}
+              className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white/50 dark:bg-zinc-900/50 p-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-vertical leading-relaxed"
+            />
+            <div className="flex justify-end gap-2">
+              <GlassButton variant="ghost" onClick={() => setShowWrite(false)}>{tt.cancel}</GlassButton>
+              <GlassButton variant="primary" onClick={saveWrite} disabled={writeSaving || (!writeTitle.trim() && !writeBody.trim())}>
+                {writeSaving ? tt.saving : tt.saveContentBtn}
+              </GlassButton>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Discard / start-new confirmation */}
       {showDiscardConfirm && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" onClick={() => setShowDiscardConfirm(false)}>
           <div className="w-full max-w-sm rounded-2xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white dark:bg-zinc-900 p-6 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Start a new content?</h3>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">{tt.startNewTitle}</h3>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              This clears your current recording, transcript, draft, and generated posts. This can&apos;t be undone.
+              {tt.startNewBody}
             </p>
             <div className="flex justify-end gap-2">
-              <GlassButton variant="ghost" onClick={() => setShowDiscardConfirm(false)}>Cancel</GlassButton>
-              <GlassButton variant="primary" onClick={resetAll}>Start new content</GlassButton>
+              <GlassButton variant="ghost" onClick={() => setShowDiscardConfirm(false)}>{tt.cancel}</GlassButton>
+              <GlassButton variant="primary" onClick={resetAll}>{tt.startNewContent}</GlassButton>
             </div>
           </div>
         </div>
@@ -857,15 +995,15 @@ export default function DashboardPage() {
       {showLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" onClick={() => setShowLinkModal(false)}>
           <div className="w-full max-w-md rounded-2xl border border-zinc-200/60 dark:border-zinc-700/40 bg-white dark:bg-zinc-900 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-1">Link Draft to Idea</h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">Search for an existing idea to link this draft to.</p>
-            <input value={ideaSearch} onChange={(e) => setIdeaSearch(e.target.value)} placeholder="Search ideas..." autoFocus
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-1">{tt.linkModalTitle}</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">{tt.linkModalDesc}</p>
+            <input value={ideaSearch} onChange={(e) => setIdeaSearch(e.target.value)} placeholder={tt.searchIdeas} autoFocus
               className="w-full rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 bg-zinc-50 dark:bg-zinc-800 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 mb-4" />
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {searchingIdeas ? (
-                <p className="text-sm text-zinc-400 text-center py-4">Searching...</p>
+                <p className="text-sm text-zinc-400 text-center py-4">{tt.searching}</p>
               ) : ideaResults.length === 0 ? (
-                <p className="text-sm text-zinc-400 text-center py-4">{ideaSearch ? "No results" : "No ideas yet"}</p>
+                <p className="text-sm text-zinc-400 text-center py-4">{ideaSearch ? tt.noResults : tt.noIdeas}</p>
               ) : (
                 ideaResults.map((idea) => (
                   <button key={idea.id} onClick={() => linkToIdea(idea)}
@@ -877,7 +1015,7 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="flex justify-end mt-4">
-              <GlassButton variant="ghost" onClick={() => setShowLinkModal(false)}>Cancel</GlassButton>
+              <GlassButton variant="ghost" onClick={() => setShowLinkModal(false)}>{tt.cancel}</GlassButton>
             </div>
           </div>
         </div>

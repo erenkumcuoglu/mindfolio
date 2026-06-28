@@ -8,7 +8,7 @@ interface GlassButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles = {
   primary:
-    "bg-emerald-600/90 hover:bg-emerald-700 text-white border-emerald-600/20",
+    "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600/20 shadow-emerald-600/30",
   secondary:
     "bg-white/70 dark:bg-zinc-800/70 hover:bg-white/90 dark:hover:bg-zinc-800/90 text-zinc-900 dark:text-zinc-100 border-zinc-200/60 dark:border-zinc-700/40",
   ghost:

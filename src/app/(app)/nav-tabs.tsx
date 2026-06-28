@@ -25,7 +25,7 @@ export function NavTabs() {
           href={tab.href}
           className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-colors ${
             tab.match.test(pathname)
-              ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200"
+              ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/30"
               : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
           }`}
         >
