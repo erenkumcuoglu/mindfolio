@@ -51,7 +51,7 @@ export function buildSystemPrompt(input: {
   prompt: string;
   persona?: string;
   personaProfile?: PersonaProfile;
-  format?: "linkedin" | "substack" | "blog" | "x" | "raw";
+  format?: "linkedin" | "substack" | "medium" | "blog" | "x" | "raw";
 }): string {
   const { prompt, persona, personaProfile, format = "raw" } = input;
 
@@ -70,6 +70,8 @@ export function buildSystemPrompt(input: {
       "Write a LinkedIn post. Keep it under 1500 chars. Open with a strong hook. Use line breaks for readability. End with 3-5 relevant hashtags.",
     substack:
       "Write a Substack/newsletter draft. Start with a subject line, then body text with short paragraphs and **bold** for emphasis.",
+    medium:
+      "Write a Medium-style long-form article. Start with a strong hook line, then a one-line subtitle, then body. Use `##` for section breaks, **bold** for key ideas, and `>` for quotes. Keep paragraphs short and skimmable.",
     blog:
       "Write a blog post in the author's own voice.\n" +
       "FIRST, output exactly 3 alternative headlines, each on its own line, in the output language, formatted exactly as:\n" +

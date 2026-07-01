@@ -10,7 +10,7 @@ export interface GenerateInput {
   prompt: string;
   persona?: string;
   personaProfile?: PersonaProfile;
-  format?: "linkedin" | "substack" | "blog" | "x" | "raw";
+  format?: "linkedin" | "substack" | "medium" | "blog" | "x" | "raw";
 }
 
 export interface GenerateResult {

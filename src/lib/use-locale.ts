@@ -23,7 +23,7 @@ const TR = {
   addNotesPlaceholder: "örn. daha samimi bir ton istiyorum, yeni ürün lansmanından bahset, sona bir çağrı ekle…",
   generateDraft: "Taslak Üret",
   saveDraft: "Taslağı Kaydet", updateDraft: "Taslağı Güncelle",
-  saveToContent: "Content'e Kaydet", updateInContent: "Content'te Güncelle",
+  saveToContent: "Taslağı Kaydet", updateInContent: "Taslağı Güncelle",
   copyDraft: "Taslağı Kopyala", copy: "Kopyala", copied: "Kopyalandı!",
   linkToIdea: "Fikre Bağla", changeLink: "Bağlantıyı Değiştir",
   titleSec: "Başlık", regenTitles: "Başlıkları yenile",

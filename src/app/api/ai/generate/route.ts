@@ -9,7 +9,7 @@ import { corsHeaders, corsPreflight } from "@/lib/cors";
 
 const bodySchema = z.object({
   prompt: z.string().min(1).max(10000),
-  format: z.enum(["linkedin", "substack", "blog", "x", "raw"]).optional(),
+  format: z.enum(["linkedin", "substack", "medium", "blog", "x", "raw"]).optional(),
 });
 
 export function OPTIONS(request: NextRequest) {

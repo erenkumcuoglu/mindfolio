@@ -16,6 +16,18 @@ export async function GET(request: NextRequest) {
       if (type === "recovery") {
         return Response.redirect(new URL("/update-password", origin));
       }
+      // Onboarding gate — yeni kullanıcı persona/onboarding_complete yoksa onboarding'e gönder
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const persona = await supabase
+          .from("personas")
+          .select("onboarding_complete")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!persona.data?.onboarding_complete) {
+          return Response.redirect(new URL("/onboarding", origin));
+        }
+      }
       return Response.redirect(new URL(next, origin));
     }
   }

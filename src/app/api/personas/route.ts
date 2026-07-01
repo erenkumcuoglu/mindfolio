@@ -1,7 +1,12 @@
 import { NextRequest } from "next/server";
 import { z } from "zod/v3";
-import { createClient } from "@/lib/supabase/server";
+import { createClientFromRequest } from "@/lib/supabase/from-request";
+import { corsHeaders, corsPreflight } from "@/lib/cors";
 import { logError, GENERIC_ERROR_MESSAGE } from "@/lib/log-error";
+
+export function OPTIONS(request: NextRequest) {
+  return corsPreflight(request);
+}
 
 const updateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -25,14 +30,16 @@ const updateSchema = z.object({
     .optional(),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   let userId: string | undefined;
+  const cors = corsHeaders(request.headers.get("origin"));
+  const reply = (data: unknown, status = 200) => Response.json(data, { status, headers: cors });
 
   try {
-    const supabase = await createClient();
+    const supabase = await createClientFromRequest(request);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return reply({ error: "Unauthorized" }, 401);
     }
     userId = user.id;
 
@@ -43,31 +50,30 @@ export async function GET() {
       .maybeSingle();
 
     if (error) throw error;
-    return Response.json(data ?? null);
+    return reply(data ?? null);
   } catch (error) {
     logError({ error, userId, context: "GET /api/personas" });
-    return Response.json({ error: GENERIC_ERROR_MESSAGE }, { status: 500 });
+    return reply({ error: GENERIC_ERROR_MESSAGE }, 500);
   }
 }
 
 export async function PUT(request: NextRequest) {
   let userId: string | undefined;
+  const cors = corsHeaders(request.headers.get("origin"));
+  const reply = (data: unknown, status = 200) => Response.json(data, { status, headers: cors });
 
   try {
-    const supabase = await createClient();
+    const supabase = await createClientFromRequest(request);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return reply({ error: "Unauthorized" }, 401);
     }
     userId = user.id;
 
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success) {
-      return Response.json(
-        { error: "Invalid request", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return reply({ error: "Invalid request", details: parsed.error.flatten() }, 400);
     }
 
     const existing = await supabase
@@ -122,9 +128,13 @@ export async function PUT(request: NextRequest) {
         .single();
 
       if (error) throw error;
-      return Response.json(data);
+      return reply(data);
     }
 
+    // İlk kez oluşturma — INSERT (subscription varsa profile'a merge et)
+    const insertProfile = parsed.data.subscription
+      ? { ...(parsed.data.profile ?? {}), subscription: parsed.data.subscription }
+      : (parsed.data.profile ?? {});
     const { data, error } = await supabase
       .from("personas")
       .insert({
@@ -132,16 +142,16 @@ export async function PUT(request: NextRequest) {
         name: parsed.data.name ?? "My Persona",
         description: parsed.data.description ?? "",
         voice: parsed.data.voice ?? "",
-        profile: parsed.data.profile ?? {},
+        profile: insertProfile,
         onboarding_complete: parsed.data.onboarding_complete ?? false,
       })
       .select()
       .single();
 
     if (error) throw error;
-    return Response.json(data);
+    return reply(data);
   } catch (error) {
     logError({ error, userId, context: "PUT /api/personas" });
-    return Response.json({ error: GENERIC_ERROR_MESSAGE }, { status: 500 });
+    return reply({ error: GENERIC_ERROR_MESSAGE }, 500);
   }
 }

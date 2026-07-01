@@ -217,13 +217,59 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {authStep === "welcome" ? (
           <div className="animate-fade-in text-zinc-900 dark:text-zinc-50">
-            <div className="mb-6"><BrandLogo /></div>
-            <h1 className="text-[34px] font-bold leading-[1.08] tracking-[-1.4px]">
-              mindfolio&apos;ya<br />hoş geldin.
-            </h1>
-            <p className="mt-2 mb-7 text-sm text-zinc-500 dark:text-zinc-400">
-              İçerik stratejini oluşturmaya hazır mısın?
-            </p>
+            {/* Top zone — floating social cards (AI yazıyor ÜSTTE) */}
+            <div className="relative h-[160px] mb-2">
+              <style>{`
+                @keyframes lg-bar { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
+                @keyframes lg-floatA { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+                @keyframes lg-floatC { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+              `}</style>
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-2.5 shadow-md backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="text-[12px] font-semibold text-zinc-700 dark:text-zinc-200">AI yazıyor</span>
+                <span className="flex items-end gap-0.5 h-3.5">
+                  {[0, 0.12, 0.24].map((d, i) => (
+                    <span
+                      key={i}
+                      className="inline-block w-0.5 bg-emerald-500 origin-bottom"
+                      style={{ height: "100%", animation: `lg-bar 0.72s ease-in-out ${d}s infinite alternate` }}
+                    />
+                  ))}
+                </span>
+              </div>
+              <div
+                className="absolute bottom-1 left-2 w-[132px] rounded-2xl border border-black/[0.06] dark:border-white/[0.09] bg-white/85 dark:bg-white/[0.054] px-3 py-2.5 flex items-center gap-2.5 backdrop-blur"
+                style={{ animation: "lg-floatA 2.6s ease-in-out infinite" }}
+              >
+                <span className="text-[15px] font-bold text-[#0a66c2]">in</span>
+                <div className="space-y-1.5">
+                  <span className="block h-1 w-12 rounded-full bg-zinc-300 dark:bg-white/15" />
+                  <span className="block h-1 w-8 rounded-full bg-zinc-300 dark:bg-white/15" />
+                </div>
+              </div>
+              <div
+                className="absolute bottom-1 right-2 w-[132px] rounded-2xl border border-black/[0.06] dark:border-white/[0.09] bg-white/85 dark:bg-white/[0.054] px-3 py-2.5 flex items-center gap-2.5 backdrop-blur"
+                style={{ animation: "lg-floatC 3s ease-in-out 0.4s infinite" }}
+              >
+                <span className="text-[15px] font-bold text-zinc-900 dark:text-zinc-100">X</span>
+                <div className="space-y-1.5">
+                  <span className="block h-1 w-10 rounded-full bg-zinc-300 dark:bg-white/15" />
+                  <span className="block h-1 w-6 rounded-full bg-zinc-300 dark:bg-white/15" />
+                </div>
+              </div>
+            </div>
+
+            {/* Middle — büyük logo (aşağı alındı, büyütüldü) + revize başlık + alt yazı */}
+            <div className="flex flex-col items-center text-center mb-7">
+              <BrandLogo size={72} />
+              <p className="mt-3 text-lg font-semibold tracking-tight text-zinc-800 dark:text-zinc-200">mindfolio</p>
+              <h1 className="mt-4 text-[28px] font-bold leading-[1.15] tracking-[-1px]">
+                Fikirlerini dünyayla paylaş.
+              </h1>
+              <p className="mt-3 text-[14px] leading-[1.55] text-zinc-500 dark:text-zinc-400 max-w-[320px]">
+                Stratejini oluştur, konuşarak anlat, Mindfolio senin elinden çıkmış bir içerik haline getirsin.
+              </p>
+            </div>
 
             <div className="space-y-2.5">
               {AppleButton}

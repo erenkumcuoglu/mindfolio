@@ -132,16 +132,22 @@ function getWarmupContent(prevStepId: string, answers: Answers): { title: string
       description: "İşte çekirdek bu. Şimdi bunu gerçek bir stratejiye dönüştürüyorum…",
     };
   }
-  if (prevStepId === "import-input") {
+  if (prevStepId === "linkedin-url") {
+    return {
+      title: "LinkedIn alındı.",
+      description: "Profil verisi sesini ve temalarını yakalamaya başlayacak.",
+    };
+  }
+  if (prevStepId === "import-content") {
     return {
       title: "Anladım, hemen inceliyorum.",
       description: "Link veya metni alıyorum. Birazdan sesini ve temalarını çıkarmaya başlayacağız.",
     };
   }
-  if (prevStepId === "import-analysis") {
+  if (prevStepId === "warmup-enrich") {
     return {
-      title: "İçeriğin taranıyor...",
-      description: "Gönderdiklerin taranıyor ve özgün sesin haritalanıyor.",
+      title: "Profil zenginleştirme tamamlandı.",
+      description: "Profil verilerin hazır — şimdi yazı sesine bakıyoruz.",
     };
   }
 
@@ -304,21 +310,33 @@ const QUESTION_STEPS: Step[] = [
     ],
     validate: (a) => (a as unknown as Answers).hasContent.length > 0,
   },
+  // 5.1 — LinkedIn profil linki (opsiyonel, skip'lenebilir)
   {
-    id: "import-input",
+    id: "linkedin-url",
     type: "input",
     part: 1,
-    title: "İçeriğini içe aktar",
-    description: "LinkedIn profilin, blog yazıların veya yazdığın herhangi bir içeriğin linkini yapıştır. Alternatif olarak birkaç yazı örneğini metin olarak ekleyebilirsin.",
-    placeholder: "https://linkedin.com/in/... veya yazı örneklerini yapıştır...",
+    title: "LinkedIn profilin var mı?",
+    description: "Paylaşırsan içerik stratejini profilinden besleyebilirim. Boş bırakabilirsin.",
+    placeholder: "linkedin.com/in/kullaniciadi",
+    validate: () => true, // her zaman geçilebilir
+  },
+  // 5.2 — İçerik içe aktar (opsiyonel, skip'lenebilir)
+  {
+    id: "import-content",
+    type: "input",
+    part: 1,
+    title: "Daha önce bir şeyler yazdın mı?",
+    description: "Blog, makale veya LinkedIn yazısı — bir link ya da metin yapıştır. Boş bırakabilirsin.",
+    placeholder: "https://medium.com/... veya yazı örneklerini yapıştır",
     validate: () => true,
   },
+  // 5.1+5.2 sonrası → enrich loader
   {
-    id: "import-analysis",
+    id: "warmup-enrich",
     type: "loader",
     part: 1,
-    title: "İçeriğin analiz ediliyor...",
-    description: "Profilin okunuyor...",
+    title: "Profilin zenginleştiriliyor...",
+    description: "Link ve metinler taranıyor, sesin ve temaların çıkarılıyor.",
   },
   {
     id: "voiceTraits",
@@ -644,6 +662,8 @@ interface Answers {
   antiposition: string[];
   inspiration: string[];
   importedContent: string;
+  "linkedin-url": string;
+  "import-content": string;
   differentiator: string;
   goals: string[];
   "voice-calibrate": string;
@@ -665,6 +685,8 @@ const defaultAnswers: Answers = {
   antiposition: [],
   inspiration: [],
   importedContent: "",
+  "linkedin-url": "",
+  "import-content": "",
   differentiator: "",
   goals: [],
   "voice-calibrate": "",
@@ -818,6 +840,11 @@ export default function OnboardingPage() {
     const voiceLabel = answers.voiceTraits.map((v) => VOICE_LABELS[v] ?? v).join(", ");
     const audienceLabel = answers.audience.map((a) => AUDIENCE_LABELS[a] ?? a).join(", ");
 
+    // 5.1 + 5.2 — yeni opsiyonel girdileri AI'ya yedir + Supabase'e kaydet
+    const linkedinUrl = (answers["linkedin-url"] || "").trim();
+    const importContent = (answers["import-content"] || "").trim();
+    const combinedImported = [importContent, answers.importedContent].filter(Boolean).join("\n\n").trim();
+
     const res = await fetch("/api/ai/analyze-persona", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -828,18 +855,20 @@ export default function OnboardingPage() {
         voiceTraits: voiceLabel,
         audience: audienceLabel,
         positioning: answers.positioning,
-        importedContent: answers.importedContent || undefined,
+        linkedinUrl: linkedinUrl || undefined,
+        importedContent: combinedImported || undefined,
       }),
     });
     if (!res.ok) throw new Error("Failed to generate persona");
     const data = await res.json();
-    // Save teaser persona
+    // Save teaser persona (+linkedin_url profile field)
+    const profileWithLinkedin = linkedinUrl ? { ...data.profile, linkedin_url: linkedinUrl } : data.profile;
     const saveRes = await fetch("/api/personas", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: goalLabel.slice(0, 60) || "My Persona",
-        profile: data.profile,
+        profile: profileWithLinkedin,
         onboarding_complete: false,
       }),
     });
@@ -856,6 +885,8 @@ export default function OnboardingPage() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
 
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
+
   const handleSubscribe = useCallback(async () => {
     setSubscribing(true);
     try {
@@ -866,7 +897,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           subscription: {
             active: true,
-            plan: "monthly",
+            plan: selectedPlan,
             mock: true,
             subscribed_at: new Date().toISOString(),
           },
@@ -881,7 +912,7 @@ export default function OnboardingPage() {
       const part2Start = STEPS.findIndex((s) => s.part === 2);
       dispatch({ type: "GO_TO", stepIndex: part2Start });
     }
-  }, []);
+  }, [selectedPlan]);
 
   // On mount: check if persona already has subscription active → jump to Part 2
   useEffect(() => {
@@ -910,6 +941,10 @@ export default function OnboardingPage() {
     const antipositionLabels = answers.antiposition.map((a) => ANTIPOSITION_LABELS[a] ?? a).join(", ");
     const inspirationLabels = answers.inspiration.map((i) => INSPIRATION_LABELS[i] ?? i).join(", ");
 
+    const linkedinUrl = (answers["linkedin-url"] || "").trim();
+    const importContent = (answers["import-content"] || "").trim();
+    const combinedImported = [importContent, answers.importedContent].filter(Boolean).join("\n\n").trim();
+
     const res = await fetch("/api/ai/analyze-persona", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -926,7 +961,8 @@ export default function OnboardingPage() {
         cadence: cadenceLabel,
         antiposition: antipositionLabels,
         inspiration: inspirationLabels,
-        importedContent: answers.importedContent || undefined,
+        linkedinUrl: linkedinUrl || undefined,
+        importedContent: combinedImported || undefined,
       }),
     });
     if (!res.ok) throw new Error("Failed to generate full strategy");
@@ -1097,22 +1133,30 @@ export default function OnboardingPage() {
 
   // ── Auto-generate / auto-advance when entering specific steps ──
   useEffect(() => {
-    if (step?.id === "import-analysis") {
+    if (step?.id === "warmup-enrich") {
+      // 5.1 + 5.2 sonrası enrich loader: opsiyonel linkedin + import-content varsa zenginleştir.
       setImportError(false);
-      // Stage the import messages
       setImportStageIndex(0);
-      setImportError(false);
       const stageTimer = setInterval(() => {
         setImportStageIndex((prev) => Math.min(prev + 1, importStages.length - 1));
-      }, 2000);
-      // If the user provided a URL, fetch its content
-      const input = answers.importedContent?.trim() ?? "";
-      if (input.startsWith("http://") || input.startsWith("https://")) {
+      }, 1500);
+
+      const linkedinUrl = (answers["linkedin-url"] || "").trim();
+      const importInput = (answers["import-content"] || "").trim();
+      const candidateUrl = (importInput.startsWith("http") ? importInput : "") || (linkedinUrl.startsWith("http") ? linkedinUrl : (linkedinUrl ? `https://${linkedinUrl.replace(/^https?:\/\//, "")}` : ""));
+
+      // Hiçbir şey verilmemişse direkt geç
+      if (!linkedinUrl && !importInput) {
+        const t = setTimeout(() => { clearInterval(stageTimer); dispatch({ type: "NEXT" }); }, 1200);
+        return () => { clearInterval(stageTimer); clearTimeout(t); };
+      }
+
+      if (candidateUrl) {
         const doFetch = () =>
           fetch("/api/preview", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: input }),
+            body: JSON.stringify({ url: candidateUrl }),
           })
             .then((res) => res.ok ? res.json() : null)
             .then((data) => {
@@ -1127,17 +1171,18 @@ export default function OnboardingPage() {
               setTimeout(() => dispatch({ type: "NEXT" }), 400);
             })
             .catch(() => {
+              // Hata olsa bile akışı kırmıyoruz — kullanıcı continue edebilsin.
               clearInterval(stageTimer);
-              setImportError(true);
+              setTimeout(() => dispatch({ type: "NEXT" }), 800);
             });
         retryImport.current = doFetch;
         doFetch();
       } else {
-        // Text content already provided, just animate through
+        // Sadece metin verilmişse — kısa animasyon, sonra geç
         setTimeout(() => {
           clearInterval(stageTimer);
           dispatch({ type: "NEXT" });
-        }, 3000);
+        }, 2500);
       }
       return () => clearInterval(stageTimer);
     }
@@ -1523,7 +1568,7 @@ export default function OnboardingPage() {
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
                     {step.title}
                   </h2>
-                  {step.id === "import-analysis" ? (
+                  {step.id === "warmup-enrich" ? (
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 min-h-[1.25rem] transition-all duration-300">
                       {importStages[importStageIndex]}
                     </p>
@@ -1536,50 +1581,99 @@ export default function OnboardingPage() {
           )}
 
           {step?.type === "paywall" && (
-            <div className="space-y-6 text-center">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-950 text-3xl">
-                💎
+            <div className="space-y-5 text-center">
+              {/* Görsel header — AI yazıyor üstte, LinkedIn/X alt */}
+              <div className="relative h-[116px] w-full">
+                <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 shadow-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-200">AI yazıyor</span>
+                  <span className="flex items-end gap-0.5 h-3">
+                    {[0, 0.15, 0.3].map((d) => (
+                      <span
+                        key={d}
+                        className="inline-block w-0.5 bg-emerald-500 origin-bottom"
+                        style={{ height: "100%", animation: `pw-bar 0.7s ease-in-out ${d}s infinite alternate` }}
+                      />
+                    ))}
+                  </span>
+                </div>
+                <div className="absolute bottom-0 left-2 w-[120px] rounded-xl border border-black/[0.06] dark:border-white/[0.09] bg-white/80 dark:bg-white/[0.054] px-3 py-2 flex items-center gap-2" style={{ animation: "pw-floatA 2.6s ease-in-out infinite" }}>
+                  <span className="text-[13px] font-bold text-[#0a66c2]">in</span>
+                  <div className="space-y-1">
+                    <span className="block h-1 w-9 rounded-full bg-zinc-300 dark:bg-white/15" />
+                    <span className="block h-1 w-6 rounded-full bg-zinc-300 dark:bg-white/15" />
+                  </div>
+                </div>
+                <div className="absolute bottom-0 right-2 w-[120px] rounded-xl border border-black/[0.06] dark:border-white/[0.09] bg-white/80 dark:bg-white/[0.054] px-3 py-2 flex items-center gap-2" style={{ animation: "pw-floatC 3s ease-in-out 0.4s infinite" }}>
+                  <span className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">X</span>
+                  <div className="space-y-1">
+                    <span className="block h-1 w-8 rounded-full bg-zinc-300 dark:bg-white/15" />
+                    <span className="block h-1 w-5 rounded-full bg-zinc-300 dark:bg-white/15" />
+                  </div>
+                </div>
+                <style>{`
+                  @keyframes pw-bar { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
+                  @keyframes pw-floatA { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+                  @keyframes pw-floatC { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+                `}</style>
               </div>
+
+              {/* V2 logo — light variant */}
+              <div className="flex justify-center">
+                <svg width="30" height="30" viewBox="0 0 26 26" fill="none" aria-hidden>
+                  <rect width="26" height="26" rx="6.5" fill="rgba(5,150,105,0.09)" stroke="rgba(5,150,105,0.2)" strokeWidth="1" />
+                  <rect x="1.5" y="10.5" width="2" height="5" rx="1" fill="#059669" opacity=".55" />
+                  <rect x="4.5" y="6.5" width="2" height="13" rx="1" fill="#059669" opacity=".85" />
+                  <rect x="7.5" y="5" width="2" height="16" rx="1" fill="#059669" />
+                  <rect x="10.5" y="7" width="2" height="12" rx="1" fill="#059669" opacity=".7" />
+                  <rect x="15" y="9.5" width="7" height="1.7" rx=".85" fill="currentColor" opacity=".58" />
+                  <rect x="15" y="12.5" width="8.5" height="1.7" rx=".85" fill="currentColor" opacity=".48" />
+                  <rect x="15" y="15.5" width="5.5" height="1.7" rx=".85" fill="currentColor" opacity=".4" />
+                </svg>
+              </div>
+
               <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
                 {step.title}
               </h2>
-              <p className="text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              <p className="text-zinc-500 dark:text-zinc-400 leading-relaxed text-sm">
                 {step.description}
               </p>
 
-              {/* Price card */}
-              <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-200/60 dark:border-emerald-800/40 p-6 space-y-4">
-                <div>
-                  <p className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">$19</p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">/ay · iptal etmek özgür</p>
-                </div>
-
-                <div className="space-y-2.5 text-left">
-                  {[
-                    ["✨", "Konumlandırma stratejisi"],
-                    ["📚", "3–5 içerik pillar'ı"],
-                    ["🎯", "Ses profili + farklılaşma özeti"],
-                    ["✍️", "Yayına hazır örnek post"],
-                    ["📅", "Önerilen yayın takvimi"],
-                    ["🎤", "Sesli + yazılı üretim desteği"],
-                    ["🔄", "Sınırsız düzenleme ve yeniden üretim"],
-                  ].map(([emoji, label]) => (
-                    <div key={label} className="flex items-center gap-2.5">
-                      <span className="text-base shrink-0">{emoji}</span>
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{label}</span>
-                    </div>
-                  ))}
-                </div>
+              {/* Plan seçim — Aylık ₺249,99 / Yıllık ₺1.899 (~%37 indirim) */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { key: "yearly" as const, period: "YILLIK", price: "₺1.899", note: "Yıllık fatura · ~₺158/ay", save: "%37 İNDİRİM" },
+                  { key: "monthly" as const, period: "AYLIK", price: "₺249,99", note: "Aylık fatura", save: null },
+                ].map((p) => {
+                  const active = selectedPlan === p.key;
+                  return (
+                    <button
+                      type="button"
+                      key={p.key}
+                      onClick={() => setSelectedPlan(p.key)}
+                      className={`relative rounded-2xl border px-3 py-4 text-left transition-all ${
+                        active
+                          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 ring-2 ring-emerald-500/20"
+                          : "border-zinc-200 dark:border-white/[0.09] bg-white/60 dark:bg-white/[0.04]"
+                      }`}
+                    >
+                      {p.save && (
+                        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-white">
+                          {p.save}
+                        </span>
+                      )}
+                      <span className="block text-center text-[9px] font-bold tracking-widest text-zinc-400">PRO</span>
+                      <span className={`block text-center text-xs font-semibold mt-1 ${active ? "text-emerald-600" : "text-zinc-600 dark:text-zinc-300"}`}>{p.period}</span>
+                      <span className={`block text-center text-[22px] font-bold mt-2 ${active ? "text-emerald-600" : "text-zinc-900 dark:text-zinc-100"}`}>{p.price}</span>
+                      <span className="block text-center text-[10px] text-zinc-400 mt-1.5">{p.note}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Trust messages */}
-              <div className="space-y-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200/60 dark:border-zinc-700/40 p-3 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                <p>
-                  💳 <strong className="text-zinc-700 dark:text-zinc-300">Ödeme güvenliği:</strong> Bu bir mock akıştır. Hiçbir kart bilgisi alınmaz veya işlenmez.
-                </p>
-                <p>
-                  🔐 <strong className="text-zinc-700 dark:text-zinc-300">Personan kaydedildi:</strong> Sonra karar versen de ilerlemen korunur.
-                </p>
+              {/* Trust + cancel note */}
+              <div className="rounded-xl border border-zinc-200/60 dark:border-white/[0.08] bg-zinc-50/60 dark:bg-white/[0.03] p-3 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed text-left">
+                💳 Bu mock akıştır — kart alınmaz. 🔐 Personan kaydedildi · İstediğin zaman iptal et.
               </div>
 
               {/* CTA */}
@@ -1591,7 +1685,11 @@ export default function OnboardingPage() {
                   onClick={handleSubscribe}
                   disabled={subscribing}
                 >
-                  {subscribing ? "Stratejin hazırlanıyor..." : "Aboneliği Başlat — $19/ay"}
+                  {subscribing
+                    ? "Stratejin hazırlanıyor..."
+                    : selectedPlan === "yearly"
+                      ? "Yıllık Aboneliği Başlat"
+                      : "Aylık Aboneliği Başlat"}
                 </GlassButton>
                 <button
                   type="button"
