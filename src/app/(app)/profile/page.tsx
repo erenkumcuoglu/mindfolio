@@ -323,14 +323,18 @@ export default function ProfilePage() {
                   )}
                 </div>
               ))}
-              <div className="flex gap-2 pt-1">
-                <GlassButton variant="ghost" onClick={() => setEditingPersona(false)}>Vazgeç</GlassButton>
-                <GlassButton variant="primary" onClick={savePersona} disabled={savingPersona || regenLoading}>{savingPersona ? "Kaydediliyor…" : "Kaydet"}</GlassButton>
-              </div>
-              <GlassButton variant="secondary" onClick={regeneratePersona} disabled={savingPersona || regenLoading}>
-                {regenLoading ? "Üretiliyor…" : "✨ AI ile Personayı Yeniden Üret"}
+              {/* Kaydet butonu kaldırıldı — mobile ile parite. Manuel kayıt ile
+                  AI üretimi ayrımı kullanıcıyı karıştırıyor, boş alanla kilit
+                  tetikleniyordu. Tek yol: AI ile yeniden üret. */}
+              <GlassButton variant="primary" onClick={regeneratePersona} disabled={regenLoading}>
+                {regenLoading ? "Üretiliyor…" : "✨ AI ile Yeniden Üret"}
               </GlassButton>
-              <p className="text-xs text-zinc-400">ⓘ Persona ayda yalnızca bir kez değişir — tutarlı strateji ve modelin sesini doğru öğrenmesi için.</p>
+              <GlassButton variant="ghost" onClick={() => setEditingPersona(false)} disabled={regenLoading}>İptal</GlassButton>
+              <p className="text-xs text-zinc-400">
+                ⓘ Değişiklikten sonra strateji 1 ay boyunca kilitlenir. Marka dilinin tutarlı kalması ve
+                modelin senin sesini doğru öğrenebilmesi için sık değişiklik önermiyoruz — bir sonraki
+                güncelleme 1 ay sonra yapılabilir.
+              </p>
             </div>
           )}
 
@@ -345,7 +349,7 @@ export default function ProfilePage() {
 
           {profile.pillars && profile.pillars.length > 0 && profile.pillars.some((p) => p.description) && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">İçerik Pillar&apos;ları</p>
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">İçerik Sütunları</p>
               {profile.pillars.map((p, i) => (
                 <div key={i} className="rounded-xl border border-zinc-200/60 dark:border-zinc-700/40 p-3">
                   <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{i + 1}. {p.title}</p>

@@ -67,7 +67,8 @@ export function buildSystemPrompt(input: {
 
   const formatInstructions: Record<string, string> = {
     linkedin:
-      "Write a LinkedIn post. Keep it under 1500 chars. Open with a strong hook. Use line breaks for readability. End with 3-5 relevant hashtags.",
+      "Write a LinkedIn post. Keep it under 1500 chars. Open with a strong hook. Use line breaks for readability. " +
+      "Do NOT add any hashtags. At the end, add exactly one line 'Kaynak: [buraya link]' (or 'Source: [link here]' if writing in English) as a placeholder for the author's article/reference URL — leave the [buraya link]/[link here] token literally so the author can replace it before publishing.",
     substack:
       "Write a Substack/newsletter draft. Start with a subject line, then body text with short paragraphs and **bold** for emphasis.",
     medium:
@@ -81,7 +82,8 @@ export function buildSystemPrompt(input: {
       "- Use **bold** to mark words the author vocally emphasizes; use *italics* for softer emphasis.\n" +
       "- Put any spoken dialogue or direct quotes inside a Markdown blockquote line starting with `> `.\n" +
       "- Keep the author's wording and rhythm; do not corporate-ize or over-polish.",
-    x: "Write an X (Twitter) post. Keep it under 280 chars. Punchy and engaging. 1-2 relevant hashtags.",
+    x: "Write an X (Twitter) post. Keep it under 260 chars (leave room for a link). Punchy and engaging. " +
+      "Do NOT add any hashtags. At the end, add ' [buraya link]' (or ' [link here]' if writing in English) as a placeholder for the author's article/reference URL — leave that token literally so the author can replace it before posting.",
     raw: "Write in plain text. No special formatting required.",
   };
 

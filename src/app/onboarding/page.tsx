@@ -320,6 +320,17 @@ const QUESTION_STEPS: Step[] = [
     placeholder: "linkedin.com/in/kullaniciadi",
     validate: () => true, // her zaman geçilebilir
   },
+  // 5.1b — Meslek (mobile ile parite: LinkedIn boşsa AI'ya somut girdi lazım,
+  // doluysa bile spesifik meslek personayı keskinleştirir).
+  {
+    id: "profession",
+    type: "input",
+    part: 1,
+    title: "Mesleğin nedir?",
+    description: "Alan yeterli değil — spesifik meslek. Ör: mimar, kardiyolog, ürün yöneticisi, editör.",
+    placeholder: "Örn: mimar, doktor, yazılım geliştirici, editör…",
+    validate: () => true,
+  },
   // 5.2 — İçerik içe aktar (opsiyonel, skip'lenebilir)
   {
     id: "import-content",
@@ -663,6 +674,7 @@ interface Answers {
   inspiration: string[];
   importedContent: string;
   "linkedin-url": string;
+  profession: string;
   "import-content": string;
   differentiator: string;
   goals: string[];
@@ -686,6 +698,7 @@ const defaultAnswers: Answers = {
   inspiration: [],
   importedContent: "",
   "linkedin-url": "",
+  profession: "",
   "import-content": "",
   differentiator: "",
   goals: [],
@@ -836,7 +849,9 @@ export default function OnboardingPage() {
 
   const generateTeaserPersona = useCallback(async () => {
     const goalLabel = GOAL_LABELS[answers.goal] ?? answers.goal;
-    const fieldLabel = FIELD_LABELS[answers.field] ?? answers.field;
+    const fieldLabelRaw = FIELD_LABELS[answers.field] ?? answers.field;
+    // Mobile parity: meslek doluysa "Alan — Meslek" olarak birleştir, AI'ya daha keskin girdi.
+    const fieldLabel = (answers.profession || "").trim() ? `${fieldLabelRaw} — ${(answers.profession as string).trim()}` : fieldLabelRaw;
     const voiceLabel = answers.voiceTraits.map((v) => VOICE_LABELS[v] ?? v).join(", ");
     const audienceLabel = answers.audience.map((a) => AUDIENCE_LABELS[a] ?? a).join(", ");
 
@@ -932,7 +947,9 @@ export default function OnboardingPage() {
 
   const generateFullStrategy = useCallback(async () => {
     const goalLabel = GOAL_LABELS[answers.goal] ?? answers.goal;
-    const fieldLabel = FIELD_LABELS[answers.field] ?? answers.field;
+    const fieldLabelRaw = FIELD_LABELS[answers.field] ?? answers.field;
+    // Mobile parity: meslek doluysa "Alan — Meslek" olarak birleştir, AI'ya daha keskin girdi.
+    const fieldLabel = (answers.profession || "").trim() ? `${fieldLabelRaw} — ${(answers.profession as string).trim()}` : fieldLabelRaw;
     const voiceLabel = answers.voiceTraits.map((v) => VOICE_LABELS[v] ?? v).join(", ");
     const audienceLabel = answers.audience.map((a) => AUDIENCE_LABELS[a] ?? a).join(", ");
     const hotTakesLabels = answers.hotTakes.map((h) => HOTTAKE_LABELS[h] ?? h).join(", ");
