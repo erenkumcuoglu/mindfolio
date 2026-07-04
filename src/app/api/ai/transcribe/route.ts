@@ -24,11 +24,32 @@ export async function POST(request: NextRequest) {
     }
     userId = user.id;
 
-    const formData = await request.formData();
-    const file = formData.get("audio");
+    // Mobil client'ta RN'nin FormData polyfill'i "Unsupported FormDataPart"
+    // hatası verdiği için hem multipart hem JSON base64 body destekliyoruz.
+    // JSON: { audioBase64: string, mimeType: string, filename?: string }
+    let file: Blob | null = null;
+    let mimeType = "audio/webm";
+    const contentType = request.headers.get("content-type") || "";
 
-    if (!file || !(file instanceof Blob)) {
-      return reply({ error: "Audio file required" }, 400);
+    if (contentType.includes("application/json")) {
+      const body = await request.json().catch(() => ({}));
+      const b64 = typeof body?.audioBase64 === "string" ? body.audioBase64 : "";
+      if (!b64) return reply({ error: "audioBase64 gerekli" }, 400);
+      mimeType = typeof body?.mimeType === "string" ? body.mimeType : "audio/mp4";
+      try {
+        const buf = Buffer.from(b64, "base64");
+        file = new Blob([buf], { type: mimeType });
+      } catch {
+        return reply({ error: "audioBase64 çözümlenemedi" }, 400);
+      }
+    } else {
+      const formData = await request.formData();
+      const rawFile = formData.get("audio");
+      if (!rawFile || !(rawFile instanceof Blob)) {
+        return reply({ error: "Audio file required" }, 400);
+      }
+      file = rawFile;
+      mimeType = rawFile.type || "audio/webm";
     }
 
     const allowedTypes = [
@@ -37,7 +58,6 @@ export async function POST(request: NextRequest) {
       "audio/webm", "audio/x-m4a",
     ];
 
-    const mimeType = file.type || "audio/webm";
     if (!allowedTypes.includes(mimeType) && !mimeType.startsWith("audio/")) {
       return reply({ error: `Unsupported audio type: ${mimeType}` }, 400);
     }
