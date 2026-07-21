@@ -79,6 +79,21 @@ const STRICT_OUTPUT_RULES = [
   `- Write in the same language as the author's material.`,
 ].join("\n");
 
+/**
+ * Interpretation guard for persona constraints. The persona profile is rendered
+ * verbatim (tone, differentiation.do/dont, voice), so the author's own shorthand
+ * feedback — e.g. "fazla uzatma", "keep it short", "less fluff" — can leak in as a
+ * literal instruction and get over-applied as a hard length cut, killing depth.
+ * This reframes brevity-type constraints as a signal-to-noise target, not a word
+ * count ceiling. Only injected when a persona is present.
+ */
+const PERSONA_CONSTRAINT_GUARD = [
+  `## Interpreting Persona Constraints`,
+  `The persona above may contain the author's own shorthand feedback (e.g. "fazla uzatma", "kısa yaz", "don't overwrite", "less fluff"). Interpret any brevity/conciseness constraint as a VERBOSITY signal, never as a hard length cut:`,
+  `- "too long" / "fazla uzatma" / "keep it short" → strip filler and redundancy so every sentence carries information; do NOT drop conceptual connections, examples, nuance, or depth, and do NOT cut below the length the material actually needs.`,
+  `- Optimize for signal-to-noise, not word count. Density, not shortness, is the goal.`,
+].join("\n");
+
 export const FORMAT_INSTRUCTIONS: Record<ContentFormat, string> = {
   linkedin:
     "Write a LinkedIn post. Keep it under 1500 chars. Open with a strong hook. Use line breaks for readability. " +
@@ -149,10 +164,12 @@ export function buildFinalPrompt(input: {
   const { outline, format = "raw" } = input;
   const formatInstruction = FORMAT_INSTRUCTIONS[format] ?? FORMAT_INSTRUCTIONS.raw;
 
+  const pBlock = personaBlock(input);
   return [
     `You are Mindfolio AI. You write finished content in the author's own natural voice and language.`,
     STRICT_OUTPUT_RULES,
-    personaBlock(input),
+    pBlock,
+    pBlock ? PERSONA_CONSTRAINT_GUARD : "",
     `## Editorial Principles`,
     EDITORIAL_BASE_LAYER,
     `## Writing Task`,
@@ -177,10 +194,12 @@ export function buildSystemPrompt(input: {
   const { prompt, format = "raw" } = input;
   const formatInstruction = FORMAT_INSTRUCTIONS[format] ?? FORMAT_INSTRUCTIONS.raw;
 
+  const pBlock = personaBlock(input);
   return [
     `You are Mindfolio AI. You write finished content in the author's own natural voice and language.`,
     STRICT_OUTPUT_RULES,
-    personaBlock(input),
+    pBlock,
+    pBlock ? PERSONA_CONSTRAINT_GUARD : "",
     `## Editorial Principles`,
     EDITORIAL_BASE_LAYER,
     `## Writing Task`,
